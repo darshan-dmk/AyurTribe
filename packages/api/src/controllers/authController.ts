@@ -56,16 +56,16 @@ export const authController = {
           console.warn('[authController] SMS sending failed:', err);
         }
       }
-      
+
       if (normalized.email) {
         try {
           const result = await sendMail({
             to: normalized.email,
-            subject: `Your SwasthyaSync verification code: ${otp}`,
+            subject: `Your Ayur Tribe verification code: ${otp}`,
             text: `Your verification code is ${otp}`,
             html: `<p>Your verification code is <b>${otp}</b></p>`
           });
-          
+
           if (result.ok) {
             emailSent = true;
           } else {
@@ -176,121 +176,114 @@ export const authController = {
   // REGISTER USER
   // ======================
   async register(req: Request, res: Response) {
-  try {
-    if ((req as any).user) {
-      return res.status(400).json({ error: 'Already authenticated. Please log out before registering a new user.' });
-    }
-
-    const { 
-      phone, firstName, lastName, email, consent, dateOfBirth, gender, address,
-      emergencyContact, emergencyName, emergencyRelation,
-      occupation, chronicConditions, currentMedications, allergies,
-      previousSurgeries, familyHistory, exerciseFrequency, sleepPattern,
-      dietaryPreferences, smokingStatus, alcoholConsumption, stressLevel,
-      previousAyurvedicTreatment, specificConcerns, treatmentGoals
-    } = req.body;
-
-    if (!consent) {
-      return res.status(400).json({ error: 'Consent is required' });
-    }
-
-    let normalizedPhone: string | null = null;
-    if (phone) {
-      const norm = otpService.normalizeIdentifier(phone);
-      if (norm.phone) {
-        if (!otpService.validatePhoneNumber(norm.phone)) {
-          return res.status(400).json({ error: 'Invalid phone number' });
-        }
-        normalizedPhone = otpService.formatPhoneForStorage(norm.phone);
+    try {
+      if ((req as any).user) {
+        return res.status(400).json({ error: 'Already authenticated. Please log out before registering a new user.' });
       }
+
+      const {
+        phone, firstName, lastName, email, consent, dateOfBirth, gender, address,
+        emergencyContact, emergencyName, emergencyRelation,
+        occupation, chronicConditions, currentMedications, allergies,
+        previousSurgeries, familyHistory, exerciseFrequency, sleepPattern,
+        dietaryPreferences, smokingStatus, alcoholConsumption, stressLevel,
+        previousAyurvedicTreatment, specificConcerns, treatmentGoals
+      } = req.body;
+
+      if (!consent) {
+        return res.status(400).json({ error: 'Consent is required' });
+      }
+
+      let normalizedPhone: string | null = null;
+      if (phone) {
+        const norm = otpService.normalizeIdentifier(phone);
+        if (norm.phone) {
+          if (!otpService.validatePhoneNumber(norm.phone)) {
+            return res.status(400).json({ error: 'Invalid phone number' });
+          }
+          normalizedPhone = otpService.formatPhoneForStorage(norm.phone);
+        }
+      }
+
+      if (!normalizedPhone && !email) {
+        return res.status(400).json({ error: 'Phone or email required' });
+      }
+
+      // IF userId is provided in body (from client-side Supabase Auth signup), use that.
+      // Otherwise generate new one.
+      const userId = (req.body as any).userId || crypto.randomUUID();
+
+      // Check for existing user logic removed - we will UPSERT to ensure data sync
+
+      // ... logic to verify phone/email uniqueness if needed...
+
+      const now = new Date().toISOString();
+
+      // Create complete user record with all provided data
+      const userData = {
+        id: userId,
+        phone: normalizedPhone,
+        first_name: firstName,
+        last_name: lastName,
+        email: email ? email.toLowerCase() : null,
+        date_of_birth: dateOfBirth,
+        gender: gender,
+        address: address,
+        role: 'patient',
+        consent_given: consent,
+        consent_timestamp: now,
+        is_verified: true,
+        personal_details_completed: true,
+        questionnaire_completed: false,
+        onboarding_completed: false,
+        created_at: now,
+        updated_at: now, // Ensure updated_at is set for upsert
+        // Emergency contact
+        emergency_contact: emergencyContact,
+        emergency_name: emergencyName,
+        emergency_relation: emergencyRelation,
+        // Health & lifestyle data
+        occupation: occupation,
+        chronic_conditions: chronicConditions || [],
+        current_medications: currentMedications || [],
+        allergies: allergies || [],
+        previous_surgeries: previousSurgeries || [],
+        family_history: familyHistory || [],
+        exercise_frequency: exerciseFrequency,
+        sleep_pattern: sleepPattern,
+        dietary_preferences: dietaryPreferences || [],
+        smoking_status: smokingStatus,
+        alcohol_consumption: alcoholConsumption,
+        stress_level: stressLevel,
+        previous_ayurvedic_treatment: previousAyurvedicTreatment,
+        specific_concerns: specificConcerns || [],
+        treatment_goals: treatmentGoals || []
+      };
+
+      console.log('[authController] Attempting UPSERT into public.users...', userData.id);
+
+      // Using upsert handles both collision with Trigger (update) and fresh insert
+      const { data: newUser, error } = await supabase
+        .from('users')
+        .upsert(userData, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[authController] Registration upsert error:', error);
+        throw error;
+      }
+
+      console.log('[authController] Upsert successful, returning response.');
+
+      const token = jwt.sign({ id: newUser.id, phone: newUser.phone, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ success: true, token, user: newUser });
+    } catch (err: any) {
+      console.error('Register error:', err);
+      return res.status(500).json({ error: 'Registration failed', details: err?.message });
     }
+  },
 
-    if (!normalizedPhone && !email) {
-      return res.status(400).json({ error: 'Phone or email required' });
-    }
-
-    // Check for existing user
-    const orClauses: string[] = [];
-    if (normalizedPhone) orClauses.push(`phone.eq.${normalizedPhone}`);
-    if (email) orClauses.push(`email.eq.${email.toLowerCase()}`);
-    const orQuery: string = orClauses.join(',');
-
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('*')
-      .or(orQuery as string)
-      .maybeSingle();
-
-    if (existingUser) {
-      const token = jwt.sign(
-        { id: existingUser.id, phone: existingUser.phone, email: existingUser.email, role: existingUser.role },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-      return res.json({ success: true, token, user: existingUser });
-    }
-
-    const userId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    // Create complete user record with all provided data
-    const userData = {
-      id: userId,
-      phone: normalizedPhone,
-      first_name: firstName,
-      last_name: lastName,
-      email: email ? email.toLowerCase() : null,
-      date_of_birth: dateOfBirth,
-      gender: gender,
-      address: address,
-      role: 'patient',
-      consent_given: consent,
-      consent_timestamp: now,
-      is_verified: true,
-      personal_details_completed: true,
-      questionnaire_completed: false,
-      onboarding_completed: false,
-      created_at: now,
-      // Emergency contact
-      emergency_contact: emergencyContact,
-      emergency_name: emergencyName,
-      emergency_relation: emergencyRelation,
-      // Health & lifestyle data
-      occupation: occupation,
-      chronic_conditions: chronicConditions || [],
-      current_medications: currentMedications || [],
-      allergies: allergies || [],
-      previous_surgeries: previousSurgeries || [],
-      family_history: familyHistory || [],
-      exercise_frequency: exerciseFrequency,
-      sleep_pattern: sleepPattern,
-      dietary_preferences: dietaryPreferences || [],
-      smoking_status: smokingStatus,
-      alcohol_consumption: alcoholConsumption,
-      stress_level: stressLevel,
-      previous_ayurvedic_treatment: previousAyurvedicTreatment,
-      specific_concerns: specificConcerns || [],
-      treatment_goals: treatmentGoals || []
-    };
-
-    const { data: newUser, error } = await supabase
-      .from('users')
-      .insert(userData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Registration error:', error);
-      throw error;
-    }
-
-    const token = jwt.sign({ id: newUser.id, phone: newUser.phone, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ success: true, token, user: newUser });
-  } catch (err: any) {
-    console.error('Register error:', err);
-    return res.status(500).json({ error: 'Registration failed', details: err?.message });
-  }
-},
   // ======================
   // GET PROFILE
   // ======================
@@ -311,72 +304,72 @@ export const authController = {
 
 
   // Add this new method to authController object
-async updateProfile(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user?.id;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  async updateProfile(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const {
-      // Personal details
-      firstName, lastName, dateOfBirth, gender, address,
-      // Emergency contact
-      emergencyContact, emergencyName, emergencyRelation,
-      // Health information
-      occupation, chronicConditions, currentMedications, allergies,
-      previousSurgeries, familyHistory,
-      // Lifestyle
-      exerciseFrequency, sleepPattern, dietaryPreferences,
-      smokingStatus, alcoholConsumption, stressLevel,
-      // Ayurvedic
-      previousAyurvedicTreatment, specificConcerns, treatmentGoals
-    } = req.body;
+      const {
+        // Personal details
+        firstName, lastName, dateOfBirth, gender, address,
+        // Emergency contact
+        emergencyContact, emergencyName, emergencyRelation,
+        // Health information
+        occupation, chronicConditions, currentMedications, allergies,
+        previousSurgeries, familyHistory,
+        // Lifestyle
+        exerciseFrequency, sleepPattern, dietaryPreferences,
+        smokingStatus, alcoholConsumption, stressLevel,
+        // Ayurvedic
+        previousAyurvedicTreatment, specificConcerns, treatmentGoals
+      } = req.body;
 
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
 
-    // Only update provided fields
-    if (firstName !== undefined) updateData.first_name = firstName;
-    if (lastName !== undefined) updateData.last_name = lastName;
-    if (dateOfBirth !== undefined) updateData.date_of_birth = dateOfBirth;
-    if (gender !== undefined) updateData.gender = gender;
-    if (address !== undefined) updateData.address = address;
-    if (emergencyContact !== undefined) updateData.emergency_contact = emergencyContact;
-    if (emergencyName !== undefined) updateData.emergency_name = emergencyName;
-    if (emergencyRelation !== undefined) updateData.emergency_relation = emergencyRelation;
-    if (occupation !== undefined) updateData.occupation = occupation;
-    if (exerciseFrequency !== undefined) updateData.exercise_frequency = exerciseFrequency;
-    if (sleepPattern !== undefined) updateData.sleep_pattern = sleepPattern;
-    if (smokingStatus !== undefined) updateData.smoking_status = smokingStatus;
-    if (alcoholConsumption !== undefined) updateData.alcohol_consumption = alcoholConsumption;
-    if (stressLevel !== undefined) updateData.stress_level = stressLevel;
-    if (previousAyurvedicTreatment !== undefined) updateData.previous_ayurvedic_treatment = previousAyurvedicTreatment;
-    if (dietaryPreferences !== undefined) updateData.dietary_preferences = dietaryPreferences;
-    if (specificConcerns !== undefined) updateData.specific_concerns = specificConcerns;
-    if (treatmentGoals !== undefined) updateData.treatment_goals = treatmentGoals;
+      // Only update provided fields
+      if (firstName !== undefined) updateData.first_name = firstName;
+      if (lastName !== undefined) updateData.last_name = lastName;
+      if (dateOfBirth !== undefined) updateData.date_of_birth = dateOfBirth;
+      if (gender !== undefined) updateData.gender = gender;
+      if (address !== undefined) updateData.address = address;
+      if (emergencyContact !== undefined) updateData.emergency_contact = emergencyContact;
+      if (emergencyName !== undefined) updateData.emergency_name = emergencyName;
+      if (emergencyRelation !== undefined) updateData.emergency_relation = emergencyRelation;
+      if (occupation !== undefined) updateData.occupation = occupation;
+      if (exerciseFrequency !== undefined) updateData.exercise_frequency = exerciseFrequency;
+      if (sleepPattern !== undefined) updateData.sleep_pattern = sleepPattern;
+      if (smokingStatus !== undefined) updateData.smoking_status = smokingStatus;
+      if (alcoholConsumption !== undefined) updateData.alcohol_consumption = alcoholConsumption;
+      if (stressLevel !== undefined) updateData.stress_level = stressLevel;
+      if (previousAyurvedicTreatment !== undefined) updateData.previous_ayurvedic_treatment = previousAyurvedicTreatment;
+      if (dietaryPreferences !== undefined) updateData.dietary_preferences = dietaryPreferences;
+      if (specificConcerns !== undefined) updateData.specific_concerns = specificConcerns;
+      if (treatmentGoals !== undefined) updateData.treatment_goals = treatmentGoals;
 
-    // Handle JSON arrays
-    if (chronicConditions !== undefined) updateData.chronic_conditions = chronicConditions;
-    if (currentMedications !== undefined) updateData.current_medications = currentMedications;
-    if (allergies !== undefined) updateData.allergies = allergies;
-    if (previousSurgeries !== undefined) updateData.previous_surgeries = previousSurgeries;
-    if (familyHistory !== undefined) updateData.family_history = familyHistory;
+      // Handle JSON arrays
+      if (chronicConditions !== undefined) updateData.chronic_conditions = chronicConditions;
+      if (currentMedications !== undefined) updateData.current_medications = currentMedications;
+      if (allergies !== undefined) updateData.allergies = allergies;
+      if (previousSurgeries !== undefined) updateData.previous_surgeries = previousSurgeries;
+      if (familyHistory !== undefined) updateData.family_history = familyHistory;
 
-    const { data: updatedUser, error } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', userId)
-      .select()
-      .single();
+      const { data: updatedUser, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
 
-    if (error) throw error;
+      if (error) throw error;
 
-    return res.json({ success: true, user: updatedUser });
-  } catch (err: any) {
-    console.error('Update profile error:', err);
-    return res.status(500).json({ error: 'Failed to update profile' });
-  }
-},
+      return res.json({ success: true, user: updatedUser });
+    } catch (err: any) {
+      console.error('Update profile error:', err);
+      return res.status(500).json({ error: 'Failed to update profile' });
+    }
+  },
 
   // ======================
   // LOGIN (for admin/practitioner)

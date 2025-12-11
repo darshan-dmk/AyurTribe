@@ -91,8 +91,8 @@ export const chatController = {
         const welcomeMessage = {
           thread_id: data.id,
           sender_id: user.id,
-          content: `Welcome to Swastya Sync! 🙏\n\nI'm your AI health assistant, here to help you with:\n• Understanding Ayurvedic principles\n• Booking appointments\n• Diet and lifestyle guidance\n• Connecting with practitioners\n\nHow can I assist you today?`,
-          metadata: { isBot: true, botName: 'Swastya AI Assistant' },
+          content: `Welcome to Ayur Tribe! 🙏\n\nI'm your AI health assistant, here to help you with:\n• Understanding Ayurvedic principles\n• Booking appointments\n• Diet and lifestyle guidance\n• Connecting with practitioners\n\nHow can I assist you today?`,
+          metadata: { isBot: true, botName: 'Ayur Tribe AI Assistant' },
           is_read: false,
           created_at: new Date().toISOString()
         };

@@ -66,7 +66,7 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
         key: process.env.REACT_APP_RAZORPAY_KEY_ID || 'rzp_test_1234567890', // Replace with your Razorpay key
         amount: paymentDetails.amount * 100, // Amount in paise
         currency: 'INR',
-        name: 'Swastya Sync',
+        name: 'Ayur Tribe',
         description: `${paymentDetails.consultationType} with ${paymentDetails.doctorName}`,
         order_id: paymentDetails.appointmentId,
         handler: function (response: any) {
@@ -88,7 +88,7 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
           color: '#4F46E5' // Indigo color to match the theme
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             if (onDismiss) {
               onDismiss();
             }
@@ -171,7 +171,7 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
       >
         Pay ₹{paymentDetails.amount} - Secure Payment
       </button>
-      
+
       <div className="mt-4 text-center">
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +179,7 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
           </svg>
           <span>Secure payment powered by Razorpay</span>
         </div>
-        
+
         <div className="mt-2 flex justify-center space-x-4">
           <img src="https://razorpay.com/assets/razorpay-glyph.svg" alt="Razorpay" className="h-4" />
           <span className="text-xs text-gray-400">•</span>
@@ -214,11 +214,11 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
 
       <div className="mt-4 text-xs text-gray-500">
         <p>
-          By proceeding with the payment, you agree to our Terms of Service and Privacy Policy. 
+          By proceeding with the payment, you agree to our Terms of Service and Privacy Policy.
           You will receive appointment confirmation via SMS and email after successful payment.
         </p>
         <p className="mt-2">
-          For any payment related queries, contact our support team at support@swastyasync.com
+          For any payment related queries, contact our support team at support@ayurtribe.com
         </p>
       </div>
     </div>

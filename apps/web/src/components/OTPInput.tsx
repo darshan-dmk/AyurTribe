@@ -1,2 +1,2 @@
-// location: D:\Downloads\swasthyasync\apps\web\src\components\OTPInput.tsx
-export {};
+// location: apps/web/src/components/OTPInput.tsx
+export { };

@@ -97,7 +97,7 @@ const PractitionerDashboard: React.FC = () => {
         );
 
         setActiveThreads(threadsWithUnread);
-        
+
         // Calculate total unread messages
         const totalUnread = threadsWithUnread.reduce((sum, t) => sum + (t.unread_count || 0), 0);
         setStats(prev => ({ ...prev, unreadMessages: totalUnread }));
@@ -162,6 +162,26 @@ const PractitionerDashboard: React.FC = () => {
     navigate('/auth/practitioner');
   };
 
+  const handleToggleDuty = async () => {
+    if (!practitioner) return;
+    try {
+      const newStatus = !practitioner.is_on_duty;
+      const { error } = await supabase
+        .from('users')
+        .update({ is_on_duty: newStatus })
+        .eq('id', practitioner.id);
+
+      if (error) throw error;
+
+      setPractitioner({ ...practitioner, is_on_duty: newStatus });
+      // Use standard alert since toast is not imported in this file yet, 
+      // or we can just rely on the UI update. Let's try to add toast import if possible, 
+      // but for now UI update is key.
+    } catch (error) {
+      console.error('Error toggling duty status:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -190,13 +210,22 @@ const PractitionerDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate('/practitioner/patients')}
                 className="px-4 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
               >
                 View All Patients
+              </button>
+              <button
+                onClick={handleToggleDuty}
+                className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 ${practitioner?.is_on_duty
+                  ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+              >
+                {practitioner?.is_on_duty ? '🟢 On Duty' : '⚪ Off Duty'}
               </button>
               <button
                 onClick={() => navigate('/practitioner/schedule')}
@@ -221,21 +250,19 @@ const PractitionerDashboard: React.FC = () => {
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveView('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeView === 'dashboard'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'dashboard'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Dashboard
             </button>
             <button
               onClick={() => setActiveView('nutrition')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeView === 'nutrition'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'nutrition'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Nutrition Management
             </button>
@@ -405,7 +432,7 @@ const PractitionerDashboard: React.FC = () => {
                 View and manage personalized nutrition plans for your patients
               </p>
             </div>
-            
+
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Select Patient
@@ -440,8 +467,8 @@ const PractitionerDashboard: React.FC = () => {
       </main>
 
       {/* Chat Widget - For practitioner view */}
-      <ChatWidget 
-        initialThreadId={selectedThreadId} 
+      <ChatWidget
+        initialThreadId={selectedThreadId}
         isPractitionerView={true}
       />
     </div>

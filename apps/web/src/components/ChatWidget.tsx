@@ -35,7 +35,7 @@ type User = {
   role?: string;
 };
 
-const ChatWidget: React.FC<{ 
+const ChatWidget: React.FC<{
   initialThreadId?: string;
   isPractitionerView?: boolean;
 }> = ({ initialThreadId, isPractitionerView = false }) => {
@@ -49,25 +49,25 @@ const ChatWidget: React.FC<{
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [isConnectingToPractitioner, setIsConnectingToPractitioner] = useState(false);
-  
+
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const realtimeRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Add this right after the useState declarations in ChatWidget
-useEffect(() => {
-  console.log('[ChatWidget] Current userId:', userId);
-  console.log('[ChatWidget] Current user:', currentUser);
-  console.log('[ChatWidget] Selected thread:', selectedThread);
-}, [userId, currentUser, selectedThread]);
+  useEffect(() => {
+    console.log('[ChatWidget] Current userId:', userId);
+    console.log('[ChatWidget] Current user:', currentUser);
+    console.log('[ChatWidget] Selected thread:', selectedThread);
+  }, [userId, currentUser, selectedThread]);
 
-// ADD THIS NEW useEffect RIGHT HERE - After the debugging useEffect
-useEffect(() => {
-  // Show quick actions for new threads or threads with only welcome message
-  if (selectedThread && messages.length <= 1) {
-    setShowQuickActions(true);
-  }
-}, [selectedThread, messages.length]);
+  // ADD THIS NEW useEffect RIGHT HERE - After the debugging useEffect
+  useEffect(() => {
+    // Show quick actions for new threads or threads with only welcome message
+    if (selectedThread && messages.length <= 1) {
+      setShowQuickActions(true);
+    }
+  }, [selectedThread, messages.length]);
   // Quick action buttons for common queries
   const quickActions = [
     { id: 'prakriti', label: '🧘 About Prakriti', query: 'What is Prakriti and how does it work?' },
@@ -212,7 +212,7 @@ What would you like to know more about?`;
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       return data?.dominant || null;
     } catch (error) {
       console.error('Error fetching Prakriti:', error);
@@ -293,76 +293,76 @@ What would you like to know more about?`;
   // Load current user
   useEffect(() => {
     const init = async () => {
-  try {
-    console.log('[ChatWidget] Initializing user...');
-    
-    // Initialize WebSocket connection
-    websocketService.connect();
-    
-    // First try Supabase auth
-    const { data, error } = await supabase.auth.getUser();
-    if (!error && data?.user?.id) {
-      console.log('[ChatWidget] Found user from Supabase:', data.user.id);
-      setUserId(data.user.id);
-          
+      try {
+        console.log('[ChatWidget] Initializing user...');
+
+        // Initialize WebSocket connection
+        websocketService.connect();
+
+        // First try Supabase auth
+        const { data, error } = await supabase.auth.getUser();
+        if (!error && data?.user?.id) {
+          console.log('[ChatWidget] Found user from Supabase:', data.user.id);
+          setUserId(data.user.id);
+
           // Get user details from database
           const { data: userData } = await supabase
             .from('users')
             .select('id, first_name, last_name, role')
             .eq('id', data.user.id)
             .single();
-          
+
           if (userData) {
             setCurrentUser(userData);
             console.log('[ChatWidget] User details loaded:', userData.first_name, userData.last_name);
           }
           return; // Success, exit early
         }
-        
+
         // Method 2: Fallback to localStorage (same as Dashboard does)
         const storedUserJson = localStorage.getItem('user');
-    if (storedUserJson) {
-      try {
-        const parsed = JSON.parse(storedUserJson);
-        if (parsed?.id && parsed?.email) {
-          console.log('[ChatWidget] Creating Supabase session for:', parsed.email);
-          
-          // Create a Supabase session using the stored user data
-          // This is a workaround - ideally you'd have the password or use a different method
-          const { data: authData, error: authError } = await supabase.auth.signInAnonymously({
-            options: {
-              data: {
-                user_id: parsed.id,
-                email: parsed.email,
-                role: parsed.role
+        if (storedUserJson) {
+          try {
+            const parsed = JSON.parse(storedUserJson);
+            if (parsed?.id && parsed?.email) {
+              console.log('[ChatWidget] Creating Supabase session for:', parsed.email);
+
+              // Create a Supabase session using the stored user data
+              // This is a workaround - ideally you'd have the password or use a different method
+              const { data: authData, error: authError } = await supabase.auth.signInAnonymously({
+                options: {
+                  data: {
+                    user_id: parsed.id,
+                    email: parsed.email,
+                    role: parsed.role
+                  }
+                }
+              });
+
+              if (!authError && authData.user) {
+                setUserId(parsed.id);
+                setCurrentUser({
+                  id: parsed.id,
+                  first_name: parsed.first_name,
+                  last_name: parsed.last_name,
+                  role: parsed.role || 'patient'
+                });
+                return;
               }
             }
-          });
-          
-          if (!authError && authData.user) {
-            setUserId(parsed.id);
-            setCurrentUser({
-              id: parsed.id,
-              first_name: parsed.first_name,
-              last_name: parsed.last_name,
-              role: parsed.role || 'patient'
-            });
-            return;
+          } catch (e) {
+            console.error('[ChatWidget] Failed to create Supabase session:', e);
           }
         }
+
+        console.warn('[ChatWidget] No user found - chat will be disabled');
       } catch (e) {
-        console.error('[ChatWidget] Failed to create Supabase session:', e);
+        console.error('[ChatWidget] getUser failed', e);
       }
-    }
-    
-    console.warn('[ChatWidget] No user found - chat will be disabled');
-  } catch (e) {
-    console.error('[ChatWidget] getUser failed', e);
-  }
-};
-    
+    };
+
     init();
-    
+
     // Cleanup WebSocket connection on unmount
     return () => {
       websocketService.disconnect();
@@ -418,7 +418,7 @@ What would you like to know more about?`;
       setMessages([]);
       return;
     }
-    
+
     let mounted = true;
 
     const loadMessages = async () => {
@@ -465,15 +465,15 @@ What would you like to know more about?`;
       .channel(`chat:${selectedThread.id}`)
       .on(
         'postgres_changes',
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'chat_messages', 
-          filter: `thread_id=eq.${selectedThread.id}` 
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `thread_id=eq.${selectedThread.id}`
         },
         async (payload: any) => {
           const newMsg = payload.new;
-          
+
           // Get sender info
           const { data: senderData } = await supabase
             .from('users')
@@ -492,7 +492,7 @@ What would you like to know more about?`;
             if (prev.find(m => m.id === newMsg.id)) return prev;
             return [...prev, formattedMsg];
           });
-          
+
           setTimeout(() => messagesRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 50);
         }
       )
@@ -511,54 +511,54 @@ What would you like to know more about?`;
 
   // Send message
   const sendMessage = async (content?: string) => {
-  const messageContent = content || input.trim();
-  if (!selectedThread || !userId || !messageContent) return;
+    const messageContent = content || input.trim();
+    if (!selectedThread || !userId || !messageContent) return;
 
-  const payload = {
-    thread_id: selectedThread.id,
-    sender_id: userId,
-    content: messageContent,
-    metadata: { isBot: false },
-    created_at: new Date().toISOString(),
-  };
+    const payload = {
+      thread_id: selectedThread.id,
+      sender_id: userId,
+      content: messageContent,
+      metadata: { isBot: false },
+      created_at: new Date().toISOString(),
+    };
 
-  try {
-    const { error } = await supabase.from('chat_messages').insert(payload);
-    if (error) {
-      console.error('[ChatWidget] sendMessage error', error);
-      return;
-    }
+    try {
+      const { error } = await supabase.from('chat_messages').insert(payload);
+      if (error) {
+        console.error('[ChatWidget] sendMessage error', error);
+        return;
+      }
 
-    setInput('');
-     
+      setInput('');
+
 
       // Check if it's a request to connect with practitioner
       if (messageContent === 'CONNECT_PRACTITIONER' || messageContent.toLowerCase().includes('talk to practitioner')) {
-      await connectToPractitioner();
-    } else if (!selectedThread.practitioner_id) {
-      // If no practitioner assigned, provide bot response
-      await sendBotResponse(messageContent);
+        await connectToPractitioner();
+      } else if (!selectedThread.practitioner_id) {
+        // If no practitioner assigned, provide bot response
+        await sendBotResponse(messageContent);
+      }
+    } catch (e) {
+      console.error('[ChatWidget] sendMessage catch', e);
     }
-  } catch (e) {
-    console.error('[ChatWidget] sendMessage catch', e);
-  }
-};
+  };
 
 
   // Send bot response
   const sendBotResponse = async (userMessage: string) => {
     setIsTyping(true);
-    
+
     // Simulate typing delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
 
     const botResponse = await getBotResponse(userMessage);
-    
+
     const botPayload = {
       thread_id: selectedThread!.id,
       sender_id: userId,
       content: botResponse,
-      metadata: { isBot: true, botName: 'Swastya AI Assistant' },
+      metadata: { isBot: true, botName: 'Ayur Tribe AI Assistant' },
       created_at: new Date().toISOString(),
     };
 
@@ -588,11 +588,11 @@ What would you like to know more about?`;
 
       if (practitioners && practitioners.length > 0) {
         const practitioner = practitioners[0];
-        
+
         // Update thread with practitioner
         await supabase
           .from('chat_threads')
-          .update({ 
+          .update({
             practitioner_id: practitioner.id,
             title: `Consultation with Dr. ${practitioner.first_name} ${practitioner.last_name}`
           })
@@ -608,14 +608,14 @@ What would you like to know more about?`;
         };
 
         await supabase.from('chat_messages').insert(notificationPayload);
-        
+
         // Reload thread
         const { data: updatedThread } = await supabase
           .from('chat_threads')
           .select('*')
           .eq('id', selectedThread.id)
           .single();
-        
+
         if (updatedThread) {
           setSelectedThread(updatedThread);
         }
@@ -643,10 +643,10 @@ What would you like to know more about?`;
 
     // Ensure we have a user ID (try to get it again if not)
     let currentUserId = userId;
-    
+
     if (!currentUserId) {
       console.log('[ChatWidget] No userId, attempting to get from localStorage...');
-      
+
       // Try localStorage
       const storedUserJson = localStorage.getItem('user');
       if (storedUserJson) {
@@ -666,7 +666,7 @@ What would you like to know more about?`;
           console.error('[ChatWidget] Failed to parse user from localStorage:', e);
         }
       }
-      
+
       // Still no user? Try Supabase one more time
       if (!currentUserId) {
         const { data } = await supabase.auth.getUser();
@@ -675,7 +675,7 @@ What would you like to know more about?`;
           setUserId(data.user.id);
         }
       }
-      
+
       // Final check
       if (!currentUserId) {
         console.error('[ChatWidget] Cannot create thread - no user ID available');
@@ -683,90 +683,90 @@ What would you like to know more about?`;
         return;
       }
     }
-    
-    console.log('[ChatWidget] Creating new thread for user:', currentUserId);
-    
-     try {
-    const insertPayload = {
-      title: title || 'Health Consultation',
-      patient_id: currentUserId,
-      practitioner_id: null,
-      status: 'open',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    console.log('[ChatWidget] Inserting thread:', insertPayload);
-    
-    const { data, error } = await supabase
-      .from('chat_threads')
-      .insert(insertPayload)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('[ChatWidget] Supabase createThread error:', error);
-      if (error.message.includes('permission') || error.message.includes('policy')) {
-        alert('Permission denied. Please ensure you are logged in properly.');
-      } else {
-        alert(`Failed to create conversation: ${error.message}`);
-      }
-      return;
-    }
-    
-      if (data) {
-      console.log('[ChatWidget] Thread created successfully:', data.id);
-      setThreads(prev => [data as Thread, ...prev]);
-      setSelectedThread(data as Thread);
-      
-      // Reset quick actions to show them for new thread
-      setShowQuickActions(true);
 
-      // Send welcome message
-      const welcomePayload = {
-        thread_id: data.id,
-        sender_id: currentUserId,
-        content: `Welcome to Swastya Sync! 🙏\n\nI'm your AI health assistant, here to help you with:\n• Understanding Ayurvedic principles\n• Booking appointments\n• Diet and lifestyle guidance\n• Connecting with practitioners\n\nHow can I assist you today?`,
-        metadata: { isBot: true, botName: 'Swastya AI Assistant' },
-        is_read: false,
+    console.log('[ChatWidget] Creating new thread for user:', currentUserId);
+
+    try {
+      const insertPayload = {
+        title: title || 'Health Consultation',
+        patient_id: currentUserId,
+        practitioner_id: null,
+        status: 'open',
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      console.log('[ChatWidget] Sending welcome message...');
-      
-      const { error: msgError } = await supabase.from('chat_messages').insert(welcomePayload);
-      if (msgError) {
-        console.error('[ChatWidget] Welcome message error:', msgError);
-      } else {
-        console.log('[ChatWidget] Welcome message sent successfully');
+      console.log('[ChatWidget] Inserting thread:', insertPayload);
+
+      const { data, error } = await supabase
+        .from('chat_threads')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[ChatWidget] Supabase createThread error:', error);
+        if (error.message.includes('permission') || error.message.includes('policy')) {
+          alert('Permission denied. Please ensure you are logged in properly.');
+        } else {
+          alert(`Failed to create conversation: ${error.message}`);
+        }
+        return;
       }
-      
-      // Clear messages array - it will be reloaded by useEffect
-      setMessages([]);
+
+      if (data) {
+        console.log('[ChatWidget] Thread created successfully:', data.id);
+        setThreads(prev => [data as Thread, ...prev]);
+        setSelectedThread(data as Thread);
+
+        // Reset quick actions to show them for new thread
+        setShowQuickActions(true);
+
+        // Send welcome message
+        const welcomePayload = {
+          thread_id: data.id,
+          sender_id: currentUserId,
+          content: `Welcome to Ayur Tribe! 🙏\n\nI'm your AI health assistant, here to help you with:\n• Understanding Ayurvedic principles\n• Booking appointments\n• Diet and lifestyle guidance\n• Connecting with practitioners\n\nHow can I assist you today?`,
+          metadata: { isBot: true, botName: 'Ayur Tribe AI Assistant' },
+          is_read: false,
+          created_at: new Date().toISOString(),
+        };
+
+        console.log('[ChatWidget] Sending welcome message...');
+
+        const { error: msgError } = await supabase.from('chat_messages').insert(welcomePayload);
+        if (msgError) {
+          console.error('[ChatWidget] Welcome message error:', msgError);
+        } else {
+          console.log('[ChatWidget] Welcome message sent successfully');
+        }
+
+        // Clear messages array - it will be reloaded by useEffect
+        setMessages([]);
+      }
+    } catch (error: any) {
+      console.error('[ChatWidget] createThread failed:', error);
+      alert('Unable to start conversation. Please try refreshing the page.');
     }
-  } catch (error: any) {
-    console.error('[ChatWidget] createThread failed:', error);
-    alert('Unable to start conversation. Please try refreshing the page.');
-  }
-};
+  };
 
 
   // Handle quick action click
   const handleQuickAction = (action: typeof quickActions[0]) => {
-  console.log('[ChatWidget] Handling quick action:', action.id);
-  
-  if (action.query === 'CONNECT_PRACTITIONER') {
-    connectToPractitioner();
-  } else {
-    // Send the query as a message
-    sendMessage(action.query);
-  }
-  
-  // Only hide quick actions after they select a non-practitioner option
-  if (action.id !== 'practitioner') {
-    setTimeout(() => setShowQuickActions(false), 100);
-  }
-};
+    console.log('[ChatWidget] Handling quick action:', action.id);
+
+    if (action.query === 'CONNECT_PRACTITIONER') {
+      connectToPractitioner();
+    } else {
+      // Send the query as a message
+      sendMessage(action.query);
+    }
+
+    // Only hide quick actions after they select a non-practitioner option
+    if (action.id !== 'practitioner') {
+      setTimeout(() => setShowQuickActions(false), 100);
+    }
+  };
 
   // Widget UI
   return (
@@ -843,7 +843,7 @@ What would you like to know more about?`;
             )}
 
             {/* Messages area */}
-            <div 
+            <div
               ref={messagesRef}
               className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"
             >
@@ -863,164 +863,159 @@ What would you like to know more about?`;
               )}
 
               {messages.map((msg, idx) => (
-  <motion.div
-    key={msg.id}
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: idx * 0.05 }}
-    className={`flex ${msg.sender_id === userId && !msg.isBot ? 'justify-end' : 'justify-start'}`}
-  >
-    <div className={`max-w-[80%] shadow-lg ${
-      msg.sender_id === userId && !msg.isBot
-        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl rounded-br-sm border-l-4 border-amber-300'
-        : msg.isBot
-        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-800 rounded-2xl rounded-bl-sm border-l-4 border-blue-400 border'
-        : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl rounded-bl-sm border-l-4 border-green-300'
-    } px-4 py-3`}>
-      {(msg.isBot || msg.sender_id !== userId) && (
-        <div className={`flex items-center mb-2 ${
-          msg.isBot ? 'text-blue-600' : 'text-white'
-        }`}>
-          <span className="text-sm font-bold">
-            {msg.isBot ? '🤖 AI Assistant' : msg.senderRole === 'practitioner' ? `👨‍⚕️ Dr. ${msg.senderName}` : `👤 ${msg.senderName}`}
-          </span>
-        </div>
-      )}
-      
-      <div className={`${
-        msg.isBot ? 'text-gray-800' : 'text-white'
-      } leading-relaxed`}>
-        {/* Enhanced bot message formatting */}
-        {msg.isBot ? (
-          <div className="space-y-2">
-            {msg.content.split('\n\n').map((paragraph, pIdx) => (
-              <div key={pIdx}>
-                {paragraph.split('\n').map((line, lIdx) => (
-                  <div key={lIdx} className={`${
-                    line.startsWith('**') ? 'font-bold text-blue-700 text-base mt-3 mb-2' :
-                    line.startsWith('•') ? 'ml-4 text-gray-700 flex items-start' :
-                    line.startsWith('✅') || line.startsWith('❌') ? 'ml-2 font-medium text-gray-800' :
-                    line.startsWith('🔵') || line.startsWith('🔴') || line.startsWith('🟢') ? 'font-semibold text-gray-800 bg-white bg-opacity-50 rounded-lg p-2 my-1' :
-                    'text-gray-700'
-                  }`}>
-                    {line.startsWith('•') && <span className="text-blue-500 mr-2 font-bold">•</span>}
-                    <span className={line.includes('**') ? 'font-semibold' : ''}>{line.replace(/\*\*/g, '')}</span>
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`flex ${msg.sender_id === userId && !msg.isBot ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`max-w-[80%] shadow-lg ${msg.sender_id === userId && !msg.isBot
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl rounded-br-sm border-l-4 border-amber-300'
+                    : msg.isBot
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-800 rounded-2xl rounded-bl-sm border-l-4 border-blue-400 border'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl rounded-bl-sm border-l-4 border-green-300'
+                    } px-4 py-3`}>
+                    {(msg.isBot || msg.sender_id !== userId) && (
+                      <div className={`flex items-center mb-2 ${msg.isBot ? 'text-blue-600' : 'text-white'
+                        }`}>
+                        <span className="text-sm font-bold">
+                          {msg.isBot ? '🤖 AI Assistant' : msg.senderRole === 'practitioner' ? `👨‍⚕️ Dr. ${msg.senderName}` : `👤 ${msg.senderName}`}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={`${msg.isBot ? 'text-gray-800' : 'text-white'
+                      } leading-relaxed`}>
+                      {/* Enhanced bot message formatting */}
+                      {msg.isBot ? (
+                        <div className="space-y-2">
+                          {msg.content.split('\n\n').map((paragraph, pIdx) => (
+                            <div key={pIdx}>
+                              {paragraph.split('\n').map((line, lIdx) => (
+                                <div key={lIdx} className={`${line.startsWith('**') ? 'font-bold text-blue-700 text-base mt-3 mb-2' :
+                                  line.startsWith('•') ? 'ml-4 text-gray-700 flex items-start' :
+                                    line.startsWith('✅') || line.startsWith('❌') ? 'ml-2 font-medium text-gray-800' :
+                                      line.startsWith('🔵') || line.startsWith('🔴') || line.startsWith('🟢') ? 'font-semibold text-gray-800 bg-white bg-opacity-50 rounded-lg p-2 my-1' :
+                                        'text-gray-700'
+                                  }`}>
+                                  {line.startsWith('•') && <span className="text-blue-500 mr-2 font-bold">•</span>}
+                                  <span className={line.includes('**') ? 'font-semibold' : ''}>{line.replace(/\*\*/g, '')}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                      )}
+                    </div>
+
+                    <div className={`text-xs mt-2 flex items-center justify-between ${msg.isBot ? 'text-gray-500' : 'text-white text-opacity-80'
+                      }`}>
+                      <span>{new Date(msg.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {!msg.isBot && (
+                        <span className="ml-2">
+                          {msg.sender_id === userId ? '✓ Sent' : '📨 Received'}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ))}
+                </motion.div>
+              ))}
+
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-gradient-to-r from-purple-100 to-pink-100 border-l-4 border-purple-400 rounded-2xl rounded-bl-sm px-4 py-3 shadow-md">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <span className="text-sm font-medium text-purple-700">AI is thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isConnectingToPractitioner && (
+                <div className="text-center py-4">
+                  <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 rounded-xl border border-emerald-300 shadow-md">
+                    <svg className="animate-spin h-5 w-5 mr-3 text-emerald-600" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="font-semibold">Connecting to practitioner...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick actions */}
+            {showQuickActions && selectedThread && messages.length <= 1 && (
+              <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-200">
+                <p className="text-sm font-semibold text-amber-800 mb-3">✨ Quick actions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {quickActions.map(action => (
+                    <button
+                      key={action.id}
+                      onClick={() => {
+                        console.log('[ChatWidget] Quick action clicked:', action.label);
+                        handleQuickAction(action);
+                        // Hide quick actions after user selects one
+                        if (action.id !== 'practitioner') {
+                          setShowQuickActions(false);
+                        }
+                      }}
+                      className="px-3 py-2 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 rounded-full text-sm font-medium text-amber-800 border border-amber-300 transition-all duration-200 transform hover:scale-105 shadow-sm"
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
-        )}
-      </div>
-      
-      <div className={`text-xs mt-2 flex items-center justify-between ${
-        msg.isBot ? 'text-gray-500' : 'text-white text-opacity-80'
-      }`}>
-        <span>{new Date(msg.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        {!msg.isBot && (
-          <span className="ml-2">
-            {msg.sender_id === userId ? '✓ Sent' : '📨 Received'}
-          </span>
-        )}
-      </div>
-    </div>
-  </motion.div>
-))}
+            )}
 
-{isTyping && (
-  <div className="flex justify-start">
-    <div className="bg-gradient-to-r from-purple-100 to-pink-100 border-l-4 border-purple-400 rounded-2xl rounded-bl-sm px-4 py-3 shadow-md">
-      <div className="flex items-center space-x-2">
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-          <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-        </div>
-        <span className="text-sm font-medium text-purple-700">AI is thinking...</span>
-      </div>
-    </div>
-  </div>
-)}
-
-{isConnectingToPractitioner && (
-  <div className="text-center py-4">
-    <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 rounded-xl border border-emerald-300 shadow-md">
-      <svg className="animate-spin h-5 w-5 mr-3 text-emerald-600" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <span className="font-semibold">Connecting to practitioner...</span>
-    </div>
-  </div>
-)}
-</div>
-
-{/* Quick actions */}
-{showQuickActions && selectedThread && messages.length <= 1 && (
-  <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-200">
-    <p className="text-sm font-semibold text-amber-800 mb-3">✨ Quick actions:</p>
-    <div className="flex flex-wrap gap-2">
-      {quickActions.map(action => (
-        <button
-          key={action.id}
-          onClick={() => {
-            console.log('[ChatWidget] Quick action clicked:', action.label);
-            handleQuickAction(action);
-            // Hide quick actions after user selects one
-            if (action.id !== 'practitioner') {
-              setShowQuickActions(false);
-            }
-          }}
-          className="px-3 py-2 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 rounded-full text-sm font-medium text-amber-800 border border-amber-300 transition-all duration-200 transform hover:scale-105 shadow-sm"
-        >
-          {action.label}
-        </button>
-      ))}
-    </div>
-  </div>
-)}
-
-{/* Input area */}
-<div className="p-4 bg-white border-t rounded-b-2xl">
-  {!selectedThread ? (
-    <button
-      onClick={() => {
-        console.log('[ChatWidget] Bottom button clicked');
-        createThreadAndSend('Health Consultation');
-      }}
-      className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg border-2 border-blue-400"
-    >
-      🚀 Start New Conversation
-    </button>
-  ) : (
-    <div className="flex space-x-2">
-      <input
-        ref={inputRef}
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-          }
-        }}
-        placeholder={selectedThread?.practitioner_id ? "Type your message..." : "Ask me anything about your health..."}
-        className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-gray-50 focus:bg-white transition-all"
-      />
-      <button
-        onClick={() => sendMessage()}
-        disabled={!input.trim()}
-        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-amber-600 hover:to-amber-700 transition-all transform hover:scale-105 shadow-md"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-        </svg>
-      </button>
-    </div>
-  )}
-</div>
+            {/* Input area */}
+            <div className="p-4 bg-white border-t rounded-b-2xl">
+              {!selectedThread ? (
+                <button
+                  onClick={() => {
+                    console.log('[ChatWidget] Bottom button clicked');
+                    createThreadAndSend('Health Consultation');
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg border-2 border-blue-400"
+                >
+                  🚀 Start New Conversation
+                </button>
+              ) : (
+                <div className="flex space-x-2">
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder={selectedThread?.practitioner_id ? "Type your message..." : "Ask me anything about your health..."}
+                    className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-gray-50 focus:bg-white transition-all"
+                  />
+                  <button
+                    onClick={() => sendMessage()}
+                    disabled={!input.trim()}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-amber-600 hover:to-amber-700 transition-all transform hover:scale-105 shadow-md"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

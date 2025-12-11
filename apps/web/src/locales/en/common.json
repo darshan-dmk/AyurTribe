@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "SwasthyaSync",
+    "appName": "Ayur Tribe",
     "loading": "Loading...",
     "error": "An error occurred",
     "success": "Success",
@@ -12,41 +12,41 @@
     "continue": "Continue"
   },
   "hero": {
-    "title": "SwasthyaSync — The Operating System for Accessible Ayurveda",
-    "subtitle": "A Panchakarma patient-management platform that combines traditional Ayurvedic wisdom with modern digital workflows",
-    "description": "SwasthyaSync helps clinics run Panchakarma programs reliably and helps patients follow therapy safely."
+    "title": "Holistic Health, Defined by Nature.",
+    "subtitle": "Ayurveda & Wellness",
+    "description": "Experience the perfect synergy of ancient Ayurvedic wisdom and modern medical science. Personalized care, simplified."
   },
   "features": {
-    "scheduling": "Intelligent scheduling and reminders",
-    "prakriti": "Prakriti-aware personalization",
-    "voice": "Voice gateway for phone-first access"
+    "scheduling": "Smart Scheduling",
+    "prakriti": "Prakriti Analysis",
+    "voice": "Voice-First Access"
   },
   "prakriti": {
-    "title": "What is Prakriti?",
+    "title": "Unlock Your Ayurvedic Profile",
     "vata": {
       "name": "Vata",
-      "description": "Movement & variability. People with Vata prakriti tend to be lean, energetic, and prone to dryness."
+      "description": "Air & Ether. Characteristics of movement, creativity, and energy."
     },
     "pitta": {
       "name": "Pitta",
-      "description": "Transformation & heat. Pitta types have strong digestion and metabolism."
+      "description": "Fire's intensity. Associated with metabolism, digestion, and focus."
     },
     "kapha": {
       "name": "Kapha",
-      "description": "Structure & stability. Kapha types are robust with steady energy."
+      "description": "Earth & Water. Embodying strength, stability, and endurance."
     }
   },
   "cta": {
-    "register": "Quick Register",
-    "getOTP": "Get OTP",
+    "register": "Start Your Journey",
+    "getOTP": "Send OTP",
     "callUs": "Call us",
     "learnMore": "Learn More"
   },
-  "privacy": "We keep audio and clinical data local; consent recorded at registration.",
+  "privacy": "Your health data is encrypted and protected with enterprise-grade security.",
   "phoneEntry": {
-    "title": "Enter Your Phone Number",
-    "subtitle": "We'll send you an OTP to verify your number",
-    "phonePlaceholder": "Enter 10-digit phone number",
+    "title": "Get Started",
+    "subtitle": "Enter your number to verify access",
+    "phonePlaceholder": "+91 98765 43210",
     "countryCode": "+91",
     "sendOTP": "Send OTP",
     "alternativeText": "Or call us directly at",

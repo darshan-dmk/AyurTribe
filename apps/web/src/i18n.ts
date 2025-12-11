@@ -10,7 +10,7 @@ import taCommon from "./locales/ta/common.json";
 import teCommon from "./locales/te/common.json";
 
 // Get saved language preference from localStorage
-const savedLanguage = localStorage.getItem('swasthya_lang') || 'en';
+const savedLanguage = localStorage.getItem('ayurtribe_lang') || 'en';
 
 i18n
   .use(HttpApi)
@@ -19,11 +19,11 @@ i18n
     lng: savedLanguage,
     fallbackLng: 'en',
     debug: false,
-    
+
     interpolation: {
       escapeValue: false, // React already escapes values
     },
-    
+
     resources: {
       en: {
         common: enCommon,
@@ -31,21 +31,22 @@ i18n
       hi: {
         common: hiCommon,
       },
-        kn: 
-        { common: knCommon 
+      kn:
+      {
+        common: knCommon
 
-        },
-        ta: { common: taCommon },
-        te: { common: teCommon }
+      },
+      ta: { common: taCommon },
+      te: { common: teCommon }
     },
-    
+
     ns: ['common'],
     defaultNS: 'common',
   });
 
 // Save language preference when it changes
 i18n.on('languageChanged', (lng) => {
-  localStorage.setItem('swasthya_lang', lng);
+  localStorage.setItem('ayurtribe_lang', lng);
 });
 
 export default i18n;

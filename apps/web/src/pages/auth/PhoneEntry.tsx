@@ -39,13 +39,13 @@ const PhoneEntry: React.FC = () => {
     try {
       setLoading(true);
       let res;
-      
+
       if (mode === 'phone') {
         if (!validatePhone(phone)) {
           setError('Enter a valid 10-digit phone number');
           return;
         }
-        
+
         console.log('[PhoneEntry] Sending OTP to phone:', phone);
         res = await api.sendOTPByPhone(phone);
         sessionStorage.setItem('pendingIdentifierType', 'phone');
@@ -55,7 +55,7 @@ const PhoneEntry: React.FC = () => {
           setError('Enter a valid email address');
           return;
         }
-        
+
         console.log('[PhoneEntry] Sending OTP to email:', email);
         res = await api.sendOTPByEmail(email);
         sessionStorage.setItem('pendingIdentifierType', 'email');
@@ -71,16 +71,16 @@ const PhoneEntry: React.FC = () => {
           // You can show this in UI for development
           alert(`DEV MODE - Your OTP is: ${res.otp}`);
         }
-        
+
         navigate('/auth/verify-otp');
       } else {
         throw new Error(res?.error || res?.message || 'Failed to send OTP');
       }
     } catch (err: any) {
       console.error('[PhoneEntry] Error:', err);
-      
+
       let errorMessage = 'Failed to send OTP';
-      
+
       if (err?.message) {
         if (err.message.includes('Unsupported phone provider')) {
           errorMessage = 'Phone OTP is not available for your region. Please try email instead.';
@@ -95,7 +95,7 @@ const PhoneEntry: React.FC = () => {
           errorMessage = err.message;
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -222,14 +222,14 @@ const PhoneEntry: React.FC = () => {
 
           {/* Logo */}
           <div className="text-center mb-8 logo-fade">
-            <div className="relative w-24 h-24 mx-auto mb-5 rounded-full flex items-center justify-center text-5xl font-bold text-amber-900 logo-glow"
-              style={{ background: 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)' }}>
+            <div className="relative w-32 h-32 mx-auto mb-5 rounded-full flex items-center justify-center logo-glow"
+              style={{ background: 'linear-gradient(135deg, #1a4731, #2d5a42)' }}>
               <div className="absolute inset-0 w-[120%] h-[120%] top-[-10%] left-[-10%] aura-rotate"
-                style={{ background: 'radial-gradient(circle, transparent 40%, rgba(255, 215, 0, 0.2) 70%)' }} />
-              ॐ
+                style={{ background: 'radial-gradient(circle, transparent 40%, rgba(255, 215, 0, 0.1) 70%)' }} />
+              <img src="/ayurtribelogo.png" alt="Ayur Tribe" className="w-24 h-24 object-contain p-2" />
             </div>
             <h1 className="text-3xl font-bold mb-2" style={{ color: '#2c1810' }}>
-              Welcome to SwastyaSync
+              Welcome to Ayur Tribe
             </h1>
             <p className="text-sm italic mb-6" style={{ color: '#6b4423' }}>
               Ancient wisdom meets modern wellness
@@ -239,9 +239,8 @@ const PhoneEntry: React.FC = () => {
           {/* Toggle */}
           <div className="relative flex gap-2 mb-8 p-1 rounded-2xl border"
             style={{ background: 'rgba(139, 69, 19, 0.1)' }}>
-            <div className={`absolute top-1 h-[calc(100%-8px)] w-[calc(50%-6px)] rounded-2xl transition-transform duration-400 ease-out ${
-              mode === 'email' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
-            }`} style={{ background: 'linear-gradient(135deg, #b8860b, #daa520)' }} />
+            <div className={`absolute top-1 h-[calc(100%-8px)] w-[calc(50%-6px)] rounded-2xl transition-transform duration-400 ease-out ${mode === 'email' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+              }`} style={{ background: 'linear-gradient(135deg, #b8860b, #daa520)' }} />
             <button type="button" onClick={() => setMode('phone')}
               className={`relative z-10 flex-1 py-3 rounded-2xl font-semibold ${mode === 'phone' ? 'text-white' : 'text-amber-800'}`}>
               📱 Phone
@@ -255,7 +254,7 @@ const PhoneEntry: React.FC = () => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative rounded-2xl border-2 overflow-hidden"
-              style={{ 
+              style={{
                 background: 'rgba(255, 248, 220, 0.6)',
                 borderColor: error ? '#cd853f' : 'rgba(218, 165, 32, 0.3)'
               }}>
@@ -264,8 +263,8 @@ const PhoneEntry: React.FC = () => {
                   <span className="px-4 py-4 text-sm font-medium" style={{ color: '#8b6914' }}>
                     +91
                   </span>
-                  <input 
-                    type="tel" 
+                  <input
+                    type="tel"
                     value={phone}
                     onChange={(e) => {
                       const digits = e.target.value.replace(/\D/g, '');
@@ -274,21 +273,21 @@ const PhoneEntry: React.FC = () => {
                       }
                     }}
                     className="flex-1 p-4 bg-transparent outline-none font-medium"
-                    placeholder="Enter mobile number" 
-                    maxLength={10} 
+                    placeholder="Enter mobile number"
+                    maxLength={10}
                     autoFocus
-                    style={{ color: '#2c1810' }} 
+                    style={{ color: '#2c1810' }}
                   />
                 </div>
               ) : (
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full p-4 bg-transparent outline-none font-medium"
-                  placeholder="Enter email address" 
+                  placeholder="Enter email address"
                   autoFocus
-                  style={{ color: '#2c1810' }} 
+                  style={{ color: '#2c1810' }}
                 />
               )}
             </div>
@@ -302,8 +301,8 @@ const PhoneEntry: React.FC = () => {
 
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-lg border text-sm error-shake"
-                style={{ 
-                  color: '#a0522d', 
+                style={{
+                  color: '#a0522d',
                   background: 'rgba(205, 133, 63, 0.1)',
                   borderColor: 'rgba(205, 133, 63, 0.3)'
                 }}>
@@ -311,17 +310,16 @@ const PhoneEntry: React.FC = () => {
               </div>
             )}
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading || (mode === 'phone' ? !phone || phone.length < 10 : !email)}
-              className={`relative w-full p-4 rounded-2xl font-bold transition-all duration-300 ${
-                loading ? 'opacity-70 cursor-not-allowed healing-pulse' : 'hover:-translate-y-0.5'
-              }`}
-              style={{ 
+              className={`relative w-full p-4 rounded-2xl font-bold transition-all duration-300 ${loading ? 'opacity-70 cursor-not-allowed healing-pulse' : 'hover:-translate-y-0.5'
+                }`}
+              style={{
                 background: (loading || (mode === 'phone' ? !phone || phone.length < 10 : !email))
-                  ? 'rgba(184, 134, 11, 0.5)' 
-                  : 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)', 
-                color: '#2c1810' 
+                  ? 'rgba(184, 134, 11, 0.5)'
+                  : 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
+                color: '#2c1810'
               }}
             >
               {loading ? (
@@ -338,7 +336,7 @@ const PhoneEntry: React.FC = () => {
           {/* Development note */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-4 p-3 rounded-lg text-xs text-center"
-              style={{ 
+              style={{
                 background: 'rgba(255, 193, 7, 0.1)',
                 color: '#8b6914',
                 border: '1px solid rgba(255, 193, 7, 0.3)'

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { prakritiQuestions, mentalHealthQuestions, Question } from '../../utils/questions';
 import { supabase } from '../../utils/supabase';
 import api from '../../utils/api';
+import { Leaf, Wind, Droplet, Flame, Check, ArrowRight, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 
 interface Answer {
   questionId: string;
@@ -31,7 +32,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
   const page2Questions = allQuestions.slice(midPoint);
   const currentQuestions = currentPage === 0 ? page1Questions : page2Questions;
 
-  const progress = currentPage === 0 ? 50 : 100;
+  const progress = Math.round((answers.length / allQuestions.length) * 100);
 
   // Load saved progress
   useEffect(() => {
@@ -68,7 +69,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
             setUserId(session.user.id);
             return;
           }
-        } catch {}
+        } catch { }
 
         const fallbackToken =
           localStorage.getItem('authToken') ||
@@ -77,7 +78,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
           null;
 
         if (!fallbackToken) {
-          navigate('/auth/phone');
+          navigate('/auth/login'); // Changed from phone to login
           return;
         }
 
@@ -90,18 +91,18 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
             localStorage.removeItem('authToken');
             localStorage.removeItem('token');
             localStorage.removeItem('accessToken');
-            navigate('/auth/phone');
+            navigate('/auth/login');
             return;
           }
         } catch {
           localStorage.removeItem('authToken');
           localStorage.removeItem('token');
           localStorage.removeItem('accessToken');
-          navigate('/auth/phone');
+          navigate('/auth/login');
           return;
         }
       } catch {
-        navigate('/auth/phone');
+        navigate('/auth/login');
       }
     };
 
@@ -152,45 +153,6 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
     }
   };
 
-  const calculateScores = (answers: Answer[]) => {
-    const scores = { vata: 0, pitta: 0, kapha: 0 };
-    answers.forEach(answer => {
-      if (answer.trait && (scores as any).hasOwnProperty(answer.trait)) {
-        (scores as any)[answer.trait] += answer.weight;
-      }
-    });
-    const total = scores.vata + scores.pitta + scores.kapha || 1;
-    const percent = {
-      vata: Math.round((scores.vata / total) * 100),
-      pitta: Math.round((scores.pitta / total) * 100),
-      kapha: Math.round((scores.kapha / total) * 100)
-    };
-
-    let dominant: 'vata' | 'pitta' | 'kapha' = 'vata';
-    let maxScore = scores.vata;
-    if (scores.pitta > maxScore) {
-      dominant = 'pitta';
-      maxScore = scores.pitta;
-    }
-    if (scores.kapha > maxScore) {
-      dominant = 'kapha';
-    }
-
-    return { scores, percent, dominant };
-  };
-
-  const calculateMentalHealthScore = (answers: Answer[]) => {
-    const mentalAnswers = answers.filter(a =>
-      a.questionId.startsWith('mh') ||
-      mentalHealthQuestions.some(q => q.id === a.questionId)
-    );
-    if (mentalAnswers.length === 0) return 50;
-    const totalWeight = mentalAnswers.reduce((sum, a) => sum + a.weight, 0);
-    const maxPossible = mentalAnswers.length * 3;
-    const score = Math.round((totalWeight / maxPossible) * 100);
-    return Math.max(10, Math.min(100, score));
-  };
-
   const handleSubmit = async () => {
     if (!canProceed()) {
       setError('Please answer all questions before submitting');
@@ -198,7 +160,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
     }
     if (!userId) {
       setError('User not authenticated. Please login again.');
-      navigate('/auth/phone');
+      navigate('/auth/login');
       return;
     }
 
@@ -206,49 +168,42 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
     setIsSubmitting(true);
     setError('');
 
-    // Show user feedback
-    const toastId = 'submit-toast';
-    toast.loading('Submitting your responses...', { id: toastId });
+    const toastId = toast.loading('Analyzing your Prakriti...');
 
     try {
-      // Validate answers before submission
       if (answers.length < 5) {
         throw new Error('Please answer at least 5 questions for accurate prediction');
       }
 
-      // Submit answers to backend API
       const response = await api.post('/questionnaire/submit', {
         userId,
         answers,
         questionnaire_type: 'prakriti'
       });
 
-      // Fix: Check for the correct response structure
       if (!response?.questionnaire?.scores) {
         throw new Error('Invalid response from prediction service');
       }
 
       console.log('[Debug] Questionnaire submission response:', response);
-      
-      // Clear saved progress after successful submission
+
       localStorage.removeItem('prakritiAnswers');
       localStorage.removeItem('prakritiPage');
-      
-      toast.success('Assessment completed successfully!', { id: toastId });
 
-      // Fix: Use the correct path to access scores
+      toast.success('Analysis complete!', { id: toastId });
+
       if (response.questionnaire) {
-        // Navigate to dashboard with the scores
         navigate('/patient/dashboard', {
           state: { prakritiScores: response.questionnaire.scores }
         });
       } else {
         setError('Failed to process questionnaire results');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to submit questionnaire:', err);
-      setError('Failed to submit questionnaire. Please try again.');
-      toast.error('Failed to submit. Please try again.', { id: toastId });
+      const errMsg = err.message || 'Failed to submit. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg, { id: toastId });
     } finally {
       setLoading(false);
       setIsSubmitting(false);
@@ -256,391 +211,214 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
   };
 
 
-  // Show loading while checking auth or loading questions
+  // Loading State
   if (!userId || loadingQuestions) {
     return (
-      <div className="min-h-screen flex items-center justify-center" 
-        style={{
-          background: `
-            radial-gradient(ellipse at top left, rgba(255, 183, 77, 0.15), transparent 40%),
-            radial-gradient(ellipse at bottom right, rgba(139, 69, 19, 0.2), transparent 40%),
-            linear-gradient(135deg, #2c1810 0%, #3d2817 25%, #4a3420 50%, #3d2817 75%, #2c1810 100%)
-          `
-        }}
-      >
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl animate-pulse"
-            style={{
-              background: 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-              boxShadow: '0 0 30px rgba(255, 215, 0, 0.5)'
-            }}
-          >
-            🕉️
-          </div>
-          <p className="text-lg" style={{ color: '#ffd700' }}>
-            Preparing your assessment...
-          </p>
-        </div>
+      <div className="min-h-screen bg-[#F4F1DE] flex flex-col items-center justify-center font-serif text-[#3D405B]">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          className="mb-8"
+        >
+          <Leaf className="w-16 h-16 text-[#81B29A]" />
+        </motion.div>
+        <h2 className="text-2xl font-medium tracking-wide">Preparing your assessment...</h2>
+        <p className="mt-2 text-[#E07A5F]">Connecting to Ayurveda wisdom</p>
       </div>
     );
   }
- return (
-    <>
-      {/* Ayurvedic Styles */}
-      <style>{`
-        @keyframes rotateMandala {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes floatHerb {
-          0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0.15; }
-          25% { transform: translate(30px, -40px) rotate(90deg) scale(1.1); opacity: 0.2; }
-          50% { transform: translate(-20px, -60px) rotate(180deg) scale(0.9); opacity: 0.1; }
-          75% { transform: translate(-40px, -20px) rotate(270deg) scale(1.05); opacity: 0.18; }
-        }
-        @keyframes ayurvedicBreathe {
-          0%, 100% { transform: scale(0.8); opacity: 0.3; filter: blur(2px); }
-          50% { transform: scale(1.2); opacity: 0.6; filter: blur(0px); }
-        }
-        @keyframes pulseExpand {
-          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-          100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
-        }
-        @keyframes fadeInQuestion {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes goldenPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0.4); }
-          50% { box-shadow: 0 0 0 10px rgba(218, 165, 32, 0); }
-        }
-        .herb-float-1 { animation: floatHerb 25s infinite ease-in-out; }
-        .herb-float-2 { animation: floatHerb 30s infinite ease-in-out; animation-delay: -5s; }
-        .herb-float-3 { animation: floatHerb 22s infinite ease-in-out; animation-delay: -10s; }
-        .herb-float-4 { animation: floatHerb 28s infinite ease-in-out; animation-delay: -15s; }
-        .mandala-rotate { animation: rotateMandala 60s linear infinite; }
-        .breathe-1 { animation: ayurvedicBreathe 6s ease-in-out infinite; }
-        .breathe-2 { animation: ayurvedicBreathe 6s ease-in-out infinite reverse; animation-delay: -3s; }
-        .pulse-ring-1 { animation: pulseExpand 4s ease-out infinite; }
-        .pulse-ring-2 { animation: pulseExpand 4s ease-out infinite; animation-delay: 1s; }
-        .pulse-ring-3 { animation: pulseExpand 4s ease-out infinite; animation-delay: 2s; }
-        .question-fade { animation: fadeInQuestion 0.6s ease-out forwards; }
-        .golden-pulse { animation: goldenPulse 2s ease-in-out infinite; }
-        
-        /* Custom Radio Styles */
-        .custom-radio {
-          display: inline-block;
-          width: 20px;
-          height: 20px;
-          background: rgba(255, 248, 220, 0.6);
-          border: 2px solid #daa520;
-          border-radius: 50%;
-          position: relative;
-          transition: all 0.3s;
-          flex-shrink: 0;
-        }
-        .custom-radio.checked {
-          background: linear-gradient(135deg, #b8860b, #daa520);
-          box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.2);
-        }
-        .custom-radio.checked::after {
-          content: "";
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 8px;
-          height: 8px;
-          background: white;
-          border-radius: 50%;
-        }
-        
-        /* Scrollbar styling */
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(218, 165, 32, 0.1);
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #b8860b, #daa520);
-          border-radius: 4px;
-        }
-      `}</style>
 
-      <div className="min-h-screen py-8 px-4 relative overflow-hidden"
-        style={{
-          background: `
-            radial-gradient(ellipse at top left, rgba(255, 183, 77, 0.15), transparent 40%),
-            radial-gradient(ellipse at bottom right, rgba(139, 69, 19, 0.2), transparent 40%),
-            radial-gradient(ellipse at center, rgba(255, 140, 0, 0.1), transparent 60%),
-            linear-gradient(135deg, #2c1810 0%, #3d2817 25%, #4a3420 50%, #3d2817 75%, #2c1810 100%)
-          `
-        }}>
+  return (
+    <div className="min-h-screen bg-[#FDFBF7] font-sans selection:bg-[#E07A5F] selection:text-white">
+      {/* Decorative Background Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#81B29A]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#E07A5F]/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
+      </div>
 
-        {/* Mandala overlay */}
-        <div className="fixed inset-0 opacity-5 pointer-events-none mandala-rotate"
-          style={{
-            backgroundImage: `
-              radial-gradient(circle at 20% 20%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 80% 80%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 80% 20%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 20% 80%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 50% 50%, transparent 40%, rgba(255, 183, 77, 0.1) 40.5%, transparent 41%)
-            `
-          }}
-        />
+      <div className="max-w-4xl mx-auto px-4 py-8 relative z-10">
 
-        {/* Floating herbs */}
-        <div className="fixed w-10 h-10 top-[10%] left-[10%] rounded-full herb-float-1 opacity-15"
-          style={{ background: 'radial-gradient(circle, #8b6914 0%, transparent 70%)' }} />
-        <div className="fixed w-15 h-15 top-[70%] right-[15%] rounded-full herb-float-2 opacity-15"
-          style={{ background: 'radial-gradient(circle, #cd853f 0%, transparent 70%)' }} />
-        <div className="fixed w-9 h-9 bottom-[15%] left-[50%] rounded-full herb-float-3 opacity-15"
-          style={{ background: 'radial-gradient(circle, #daa520 0%, transparent 70%)' }} />
-        <div className="fixed w-11 h-11 top-[50%] left-[5%] rounded-full herb-float-4 opacity-15"
-          style={{ background: 'radial-gradient(circle, #b8860b 0%, transparent 70%)' }} />
-
-        {/* Breathing light */}
-        <div className="fixed w-96 h-96 md:w-[600px] md:h-[600px] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div className="absolute inset-0 rounded-full breathe-1"
-            style={{ background: 'radial-gradient(circle, rgba(255, 183, 77, 0.4), rgba(218, 165, 32, 0.1) 40%, transparent 70%)' }} />
-          <div className="absolute w-4/5 h-4/5 top-[10%] left-[10%] rounded-full breathe-2"
-            style={{ background: 'radial-gradient(circle, rgba(255, 215, 0, 0.3), rgba(184, 134, 11, 0.15) 30%, transparent 60%)' }} />
-        </div>
-
-        {/* Pulse rings */}
-        <div className="fixed w-[800px] h-[800px] top-1/2 left-1/2 border border-yellow-400/20 rounded-full pulse-ring-1" />
-        <div className="fixed w-[800px] h-[800px] top-1/2 left-1/2 border border-yellow-400/20 rounded-full pulse-ring-2" />
-        <div className="fixed w-[800px] h-[800px] top-1/2 left-1/2 border border-yellow-400/20 rounded-full pulse-ring-3" />
-
-        <div className="max-w-5xl mx-auto relative z-10">
-          {/* Header with Progress */}
-          <motion.div 
+        {/* Header Section */}
+        <header className="text-center mb-12 pt-8">
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            transition={{ duration: 0.6 }}
           >
-            <div className="text-center mb-4">
-              <h1 className="text-3xl font-bold mb-2" style={{ color: '#ffd700' }}>
-                🕉️ Prakriti Assessment
-              </h1>
-              <p className="text-sm" style={{ color: '#daa520' }}>
-                Discover your unique Ayurvedic constitution
-              </p>
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-sm mb-4 border border-[#3D405B]/10">
+              <Leaf className="w-6 h-6 text-[#3D405B]" />
             </div>
-            
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium" style={{ color: '#ffd700' }}>
-                Page {currentPage + 1} of 2
-              </span>
-              <span className="text-sm" style={{ color: '#daa520' }}>
-                {progress}% Complete
-              </span>
-            </div>
-            <div className="w-full rounded-full h-2" style={{ background: 'rgba(139, 69, 19, 0.3)' }}>
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5 }}
-                className="h-2 rounded-full"
-                style={{ background: 'linear-gradient(90deg, #b8860b, #daa520, #ffd700)' }}
-              />
-            </div>
+            <h1 className="text-4xl md:text-5xl font-serif text-[#3D405B] mb-4 tracking-tight">
+              Prakriti Assessment
+            </h1>
+            <p className="text-lg text-[#3D405B]/70 max-w-xl mx-auto leading-relaxed">
+              Discover your unique Ayurvedic constitution (Dosha) through this mindful assessment.
+              Be honest for the most accurate health insights.
+            </p>
           </motion.div>
+        </header>
 
-          {/* Questions Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="relative rounded-3xl p-6 mb-6 custom-scrollbar overflow-y-auto"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255, 248, 220, 0.95), rgba(250, 240, 190, 0.92))',
-              boxShadow: '0 30px 60px rgba(139, 69, 19, 0.4), 0 15px 35px rgba(184, 134, 11, 0.3)',
-              border: '1px solid rgba(218, 165, 32, 0.3)',
-              maxHeight: '70vh'
-            }}
-          >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPage}
-                initial={{ opacity: 0, x: currentPage === 0 ? -50 : 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: currentPage === 0 ? 50 : -50 }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* Questions Grid - 2 columns for efficiency */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {currentQuestions.map((question, idx) => (
-                    <motion.div
-                      key={question.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="p-4 rounded-xl question-fade"
-                      style={{ 
-                        background: 'rgba(255, 215, 0, 0.03)',
-                        border: '1px solid rgba(218, 165, 32, 0.2)'
-                      }}
-                    >
-                      <div className="mb-3">
-                        <span className="inline-block px-2 py-1 text-xs font-medium rounded-full mb-2"
-                          style={{ 
-                            background: 'rgba(218, 165, 32, 0.2)',
-                            color: '#8b6914'
-                          }}>
-                          {question.category}
-                        </span>
-                        <h3 className="text-sm font-semibold" style={{ color: '#2c1810' }}>
-                          {currentPage === 0 ? idx + 1 : midPoint + idx + 1}. {question.text}
-                        </h3>
-                      </div>
+        {/* Progress Bar */}
+        <div className="mb-10 sticky top-4 z-20 bg-[#FDFBF7]/80 backdrop-blur-md py-4 px-6 rounded-2xl shadow-sm border border-[#3D405B]/5">
+          <div className="flex justify-between items-center mb-2 text-sm font-medium text-[#3D405B]">
+            <span>Progress</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <div className="h-2 bg-[#3D405B]/10 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="h-full bg-[#E07A5F] rounded-full"
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-[#3D405B]/50">
+            <span>Part 1: Physical Traits</span>
+            <span>Part 2: Lifestyle & Mind</span>
+          </div>
+        </div>
 
-                      <div className="space-y-2">
-                        {question.options.map(option => (
-                          <label
-                            key={option.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                              getSelectedOption(question.id) === option.id
-                                ? 'golden-pulse'
-                                : 'hover:bg-yellow-50/10'
-                            }`}
-                            style={{
-                              background: getSelectedOption(question.id) === option.id
-                                ? 'rgba(255, 215, 0, 0.1)'
-                                : 'rgba(255, 248, 220, 0.4)',
-                              border: `2px solid ${
-                                getSelectedOption(question.id) === option.id
-                                  ? '#daa520'
-                                  : 'rgba(218, 165, 32, 0.2)'
-                              }`
-                            }}
-                          >
-                            <div className={`custom-radio ${getSelectedOption(question.id) === option.id ? 'checked' : ''}`} />
-                            <span className="text-sm" style={{ color: '#6b4423' }}>{option.text}</span>
-                            <input
-                              type="radio"
-                              name={question.id}
-                              value={option.id}
-                              checked={getSelectedOption(question.id) === option.id}
-                              onChange={() => handleAnswer(question, option.id)}
-                              className="hidden"
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </motion.div>
+        {/* Questionnaire Card */}
+        <main>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentPage}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-8"
+            >
+              {currentQuestions.map((question, idx) => (
+                <motion.div
+                  key={question.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: idx * 0.05 }}
+                  className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-[#3D405B]/5 hover:shadow-md transition-shadow duration-300"
+                >
+                  <div className="flex items-start gap-4 mb-6">
+                    <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-[#F4F1DE] text-[#3D405B] font-serif font-medium text-sm">
+                      {currentPage === 0 ? idx + 1 : midPoint + idx + 1}
+                    </span>
+                    <div>
+                      <span className="inline-block px-3 py-1 rounded-full bg-[#E07A5F]/10 text-[#E07A5F] text-xs font-semibold tracking-wide uppercase mb-2">
+                        {question.category}
+                      </span>
+                      <h3 className="text-xl font-medium text-[#3D405B] leading-snug">
+                        {question.text}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-3 ml-0 md:ml-12">
+                    {question.options.map((option) => {
+                      const isSelected = getSelectedOption(question.id) === option.id;
+                      return (
+                        <label
+                          key={option.id}
+                          className={`relative flex items-center px-5 py-4 rounded-xl cursor-pointer border transition-all duration-200 group
+                                                ${isSelected
+                              ? 'bg-[#3D405B] border-[#3D405B] text-white shadow-lg shadow-[#3D405B]/20'
+                              : 'bg-white border-[#3D405B]/10 text-[#3D405B]/80 hover:border-[#E07A5F] hover:bg-[#FFFBF9]'
+                            }
+                                            `}
+                        >
+                          <input
+                            type="radio"
+                            name={question.id}
+                            value={option.id}
+                            checked={isSelected}
+                            onChange={() => handleAnswer(question, option.id)}
+                            className="hidden"
+                          />
+
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition-colors
+                                                ${isSelected ? 'border-white' : 'border-[#3D405B]/30 group-hover:border-[#E07A5F]'}
+                                            `}>
+                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                          </div>
+
+                          <span className="text-base font-medium">{option.text}</span>
+
+                          {/* Optional: Icon indicator of trait (hidden for user, but useful for debug) 
+                                                <span className="ml-auto text-xs opacity-50 uppercase tracking-widest hidden md:block">{option.trait}</span>
+                                            */}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
 
           {/* Error Message */}
           {error && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mb-4 p-3 rounded-lg flex items-center gap-2"
-              style={{ 
-                background: 'rgba(205, 133, 63, 0.1)',
-                border: '1px solid rgba(205, 133, 63, 0.3)',
-                color: '#a0522d'
-              }}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3"
             >
-              ⚠️ {error}
+              <Activity className="w-5 h-5" />
+              {error}
             </motion.div>
           )}
 
-          {/* Navigation Buttons - only change is in handleSubmit above */}
-          <div className="flex justify-between items-center">
+          {/* Navigation Actions */}
+          <div className="mt-12 flex items-center justify-between pb-12">
             <button
               onClick={currentPage === 0 ? () => navigate(-1) : handlePrev}
-              className="px-6 py-3 rounded-xl font-medium transition-all hover:scale-105"
-              style={{
-                background: 'rgba(139, 69, 19, 0.1)',
-                color: '#8b6914',
-                border: '1px solid rgba(218, 165, 32, 0.3)'
-              }}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl text-[#3D405B] font-medium hover:bg-[#3D405B]/5 transition-colors"
             >
-              ← {currentPage === 0 ? 'Back' : 'Previous'}
+              <ChevronLeft className="w-5 h-5" />
+              {currentPage === 0 ? 'Back' : 'Previous Section'}
             </button>
 
-            {/* Page Indicators */}
-            <div className="flex gap-3">
-              {[0, 1].map((idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentPage(idx)}
-                  className={`transition-all ${
-                    idx === currentPage ? 'w-8 h-2' : 'w-2 h-2'
-                  } rounded-full`}
-                  style={{
-                    background: idx === currentPage 
-                      ? 'linear-gradient(90deg, #b8860b, #daa520, #ffd700)'
-                      : 'rgba(218, 165, 32, 0.3)'
-                  }}
-                />
-              ))}
-            </div>
-
             {currentPage === 1 ? (
-              <button
+              <Button
                 onClick={handleSubmit}
-                disabled={!canProceed() || loading}
-                className={`px-8 py-3 rounded-xl font-semibold transition-all ${
-                  !canProceed() || loading
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:scale-105 hover:-translate-y-0.5'
-                }`}
-                style={{
-                  background: !canProceed() || loading
-                    ? 'linear-gradient(135deg, #8b6914, #a0826d)'
-                    : 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-                  color: '#2c1810',
-                  boxShadow: !canProceed() || loading
-                    ? 'none'
-                    : '0 4px 15px rgba(184, 134, 11, 0.4)'
-                }}
+                disabled={!canProceed() || loading || isSubmitting}
+                className={`
+                            px-8 py-4 rounded-xl font-semibold text-white shadow-lg shadow-[#E07A5F]/20 flex items-center gap-3 transition-all
+                            ${!canProceed()
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-[#E07A5F] hover:bg-[#D06A4F] hover:scale-105 active:scale-95'
+                  }
+                        `}
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-amber-800/30 border-t-amber-800 rounded-full animate-spin" />
-                    Analyzing...
-                  </span>
-                ) : (
-                  'Submit & View Results'
-                )}
-              </button>
+                {isSubmitting ? 'Analyzing...' : 'Complete Assessment'}
+                {!isSubmitting && <Check className="w-5 h-5" />}
+              </Button>
             ) : (
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                  !canProceed()
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:scale-105 hover:-translate-y-0.5'
-                }`}
-                style={{
-                  background: !canProceed()
-                    ? 'linear-gradient(135deg, #8b6914, #a0826d)'
-                    : 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-                  color: '#2c1810',
-                  boxShadow: !canProceed()
-                    ? 'none'
-                    : '0 4px 15px rgba(184, 134, 11, 0.4)'
-                }}
+                className={`
+                            px-8 py-4 rounded-xl font-semibold text-white shadow-lg flex items-center gap-3 transition-all
+                            ${!canProceed()
+                    ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                    : 'bg-[#3D405B] hover:bg-[#2A2D3E] shadow-[#3D405B]/20 hover:scale-105 active:scale-95'
+                  }
+                        `}
               >
-                Next →
+                Next Section
+                <ArrowRight className="w-5 h-5" />
               </button>
             )}
           </div>
-        </div>
+        </main>
       </div>
-    </>
+    </div>
   );
 };
+
+// Helper button component for cleaner JSX
+const Button = ({ children, className, onClick, disabled }: any) => (
+  <button onClick={onClick} disabled={disabled} className={className}>
+    {children}
+  </button>
+);
 
 export default PrakritiQuestionnaire;

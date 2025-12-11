@@ -1,6 +1,7 @@
 // packages/api/src/middlewares/authMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { supabase } from '../db/supabaseClient';
 
 // Extend Express Request type
 declare global {
@@ -17,7 +18,7 @@ declare global {
   }
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('[authMiddleware] Processing request...');
     console.log('[authMiddleware] Headers:', req.headers);
@@ -31,24 +32,45 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
       return res.status(401).json({ error: 'Bearer token required' });
     }
 
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      console.error('❌ JWT_SECRET missing in environment');
-      return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET missing' });
+    // Verify with Supabase Auth (removes need for shared JWT_SECRET sync issues)
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      // Fallback: Try manual verification if Supabase check fails (e.g. for custom tokens)
+      const secret = process.env.JWT_SECRET;
+      if (secret) {
+        try {
+          const decoded: any = jwt.verify(token, secret);
+          req.user = {
+            id: decoded.id || decoded.sub,
+            phone: decoded.phone,
+            email: decoded.email,
+            role: decoded.role || 'patient'
+          };
+          return next();
+        } catch (jwtError) {
+          console.error('❌ Manual JWT verification failed:', jwtError);
+        }
+      }
+      return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const decoded = jwt.verify(token, secret);
-    const payload = typeof decoded === 'object' ? decoded : { id: decoded };
+    // Token is valid from Supabase
+    // Token is valid from Supabase
+    // Sync with public.users table to get the authoritative role
+    const { data: dbUser, error: dbError } = await supabase
+      .from('users')
+      .select('role, phone, email')
+      .eq('id', user.id)
+      .single();
 
-    if (!payload.id && !payload.userId && !payload.sub) {
-      return res.status(401).json({ error: 'Invalid token payload: missing user id' });
-    }
+    const role = dbUser?.role || (user.app_metadata?.role as string) || (user.user_metadata?.role as string) || 'patient';
 
     req.user = {
-      id: (payload.id || payload.userId || payload.sub) as string,
-      phone: payload.phone ?? null,
-      email: payload.email ?? null,
-      role: payload.role ?? 'patient',
+      id: user.id,
+      phone: dbUser?.phone || user.phone || null,
+      email: dbUser?.email || user.email || null,
+      role: role
     };
 
     return next();

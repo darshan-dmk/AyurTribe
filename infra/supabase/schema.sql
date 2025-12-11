@@ -619,3 +619,66 @@ create table public.users (
 create trigger update_users_updated_at BEFORE
 update on users for EACH row
 execute FUNCTION update_updated_at_column ();
+
+-- Enable Row Level Security on users table
+alter table public.users enable row level security;
+
+-- Policy: Users can read their own profile
+create policy "Users can view their own profile"
+  on public.users
+  for select
+  using (auth.uid() = id);
+
+-- Policy: Users can update their own profile
+create policy "Users can update their own profile"
+  on public.users
+  for update
+  using (auth.uid() = id);
+
+-- Policy: Allow public insert for registration (no auth required)
+create policy "Allow registration"
+  on public.users
+  for insert
+  with check (true);
+
+-- Policy: Allow admins to read all user data
+create policy "Admins can view all users"
+  on public.users
+  for select
+  using (
+    exists (
+      select 1 from public.users
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
+-- Policy: Allow admins to update all users
+create policy "Admins can update all users"
+  on public.users
+  for update
+  using (
+    exists (
+      select 1 from public.users
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
+-- Policy: Allow practitioners to view related patient data
+create policy "Practitioners can view their patients"
+  on public.users
+  for select
+  using (
+    role = 'patient' and exists (
+      select 1 from public.sessions
+      where practitioner_id = auth.uid() and patient_id = id
+    )
+  );
+
+-- Policy: Service role bypass (for backend operations)
+create policy "Service role can do anything"
+  on public.users
+  as permissive
+  for all
+  using (current_setting('role') = 'postgres' or current_setting('role') like 'service_role%');
+
+alter table public.users force row level security;

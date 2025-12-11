@@ -21,14 +21,14 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState<UserProfile | null>(null);
-  
+
   const profileSubscriptionRef = useRef<RealtimeChannel | null>(null);
   const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to parse JSON fields in profile data
   const parseProfileData = (profile: any): UserProfile => {
     if (!profile) return profile;
-    
+
     // Use the profileService's parsing function for consistency
     return profileService.parseProfileFields(profile);
   };
@@ -50,7 +50,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
         // Get current user session
         const { data: { session } } = await supabase.auth.getSession();
         console.log('[ProfileManager] Session data:', session);
-        
+
         let currentUserId = session?.user?.id;
 
         // Fallback: Try localStorage if no session
@@ -153,10 +153,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
-    
+
     setFormData(prev => {
       if (!prev) return prev;
-      
+
       return {
         ...prev,
         [name]: type === 'checkbox' ? checked : value
@@ -170,10 +170,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
       .split(',')
       .map(s => s.trim())
       .filter(s => s.length > 0);
-    
+
     setFormData(prev => {
       if (!prev) return prev;
-      
+
       return {
         ...prev,
         [fieldName]: arrayValue
@@ -184,7 +184,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
 
   const handleSave = async () => {
     if (!userId || !formData) return;
-    
+
     try {
       setSaving(true);
       setSyncStatus('syncing');
@@ -213,7 +213,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
 
   const handleRefresh = async () => {
     if (!userId) return;
-    
+
     try {
       setSyncStatus('syncing');
       setSyncMessage('🔄 Refreshing profile...');
@@ -250,29 +250,29 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="w-full max-w-4xl h-[90vh] bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-2xl flex flex-col border-4 border-amber-200"
+            className="w-full max-w-4xl h-[90vh] bg-[#1a1c19] rounded-2xl shadow-2xl flex flex-col border border-[#2c332b]"
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
           >
             {/* Header */}
             <motion.div
-              className="sticky top-0 z-40 bg-gradient-to-r from-amber-700 via-amber-600 to-orange-600 px-8 py-6 flex justify-between items-center border-b-2 border-amber-800 shadow-lg"
+              className="sticky top-0 z-40 bg-[#141613] px-8 py-6 flex justify-between items-center border-b border-[#2c332b]"
             >
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-[#2c332b] rounded-full flex items-center justify-center border border-[#3d453b]">
                   <span className="text-xl">👤</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Ayurvedic Profile Manager</h2>
-                  <p className="text-amber-100 text-sm">Manage your personalized health information</p>
+                  <h2 className="text-xl font-bold text-[#e1dccc]">Ayurvedic Profile Manager</h2>
+                  <p className="text-[#8c9489] text-sm">Manage your personalized health information</p>
                 </div>
               </motion.div>
-              
+
               <motion.div
                 className="flex items-center gap-2"
                 initial={{ x: 20, opacity: 0 }}
@@ -283,19 +283,19 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                   whileTap={{ scale: 0.95 }}
                   onClick={handleRefresh}
                   disabled={syncStatus === 'syncing' || loading}
-                  className="p-2 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-full transition-all backdrop-blur-sm disabled:opacity-50"
+                  className="p-2 bg-[#2c332b] hover:bg-[#3d453b] rounded-full transition-all border border-[#3d453b] disabled:opacity-50"
                   title="Refresh Profile"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </motion.button>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={onClose}
-                  className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-full transition-all backdrop-blur-sm"
+                  className="p-2 bg-red-900/20 hover:bg-red-900/30 rounded-full transition-all border border-red-900/30"
                   title="Close"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,11 +309,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
             <AnimatePresence>
               {syncMessage && (
                 <motion.div
-                  className={`px-6 py-3 text-sm font-medium ${
-                    syncStatus === 'synced' ? 'bg-green-100 text-green-800' :
+                  className={`px-6 py-3 text-sm font-medium ${syncStatus === 'synced' ? 'bg-green-100 text-green-800' :
                     syncStatus === 'syncing' ? 'bg-blue-100 text-blue-800' :
-                    'bg-red-100 text-red-800'
-                  }`}
+                      'bg-red-100 text-red-800'
+                    }`}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -364,7 +363,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
 
             {/* Tabs */}
             <motion.div
-              className="flex border-b-2 border-amber-200 bg-yellow-50 overflow-x-auto"
+              className="flex border-b border-[#2c332b] bg-[#1a1c19] overflow-x-auto"
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
             >
@@ -374,11 +373,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                   whileHover={{ y: -2 }}
                   whileTap={{ y: 0 }}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-4 font-medium text-sm flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-amber-600 text-amber-900 bg-amber-100'
-                      : 'border-transparent text-amber-700 hover:text-amber-900 hover:bg-amber-50'
-                  }`}
+                  className={`px-6 py-4 font-medium text-sm flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${activeTab === tab.id
+                    ? 'border-[#4a5548] text-[#e1dccc] bg-[#2c332b]'
+                    : 'border-transparent text-[#8c9489] hover:text-[#d1d6d0] hover:bg-[#232922]'
+                    }`}
                 >
                   <span>{tab.icon}</span>
                   <span>{tab.label}</span>
@@ -391,23 +389,23 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
               {loading ? (
                 <div className="flex items-center justify-center h-96">
                   <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-amber-900 mt-4 font-medium">Loading your Ayurvedic profile...</p>
+                    <div className="w-16 h-16 border-4 border-[#a3b18a] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-[#e1dccc] mt-4 font-medium">Loading your Ayurvedic profile...</p>
                   </div>
                 </div>
               ) : !formData ? (
                 <div className="flex items-center justify-center h-96">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-900/30">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <p className="text-amber-900 font-semibold">No profile data found</p>
-                    <p className="text-amber-700 text-sm mt-2">User ID: {userId || 'Not available'}</p>
-                    <button 
-                      onClick={handleRefresh} 
-                      className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+                    <p className="text-[#e1dccc] font-semibold">No profile data found</p>
+                    <p className="text-[#8c9489] text-sm mt-2">User ID: {userId || 'Not available'}</p>
+                    <button
+                      onClick={handleRefresh}
+                      className="mt-4 px-4 py-2 bg-[#2c332b] text-[#e1dccc] border border-[#3d453b] rounded-lg hover:bg-[#3d453b] transition-colors"
                     >
                       Try Refreshing
                     </button>
@@ -427,71 +425,71 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-6 rounded-xl border-2 border-amber-200">
-                        <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+                      <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
+                        <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
                           <span>📝</span> Personal Information
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">First Name</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">First Name</label>
                             <input
                               type="text"
                               name="first_name"
                               value={formData?.first_name || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Last Name</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Last Name</label>
                             <input
                               type="text"
                               name="last_name"
                               value={formData?.last_name || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Email (Read-only)</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Email (Read-only)</label>
                             <input
                               type="email"
                               name="email"
                               value={formData?.email || ''}
                               disabled
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg text-amber-900 bg-amber-100 placeholder-amber-400 cursor-not-allowed"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg text-[#e1dccc] bg-[#141613] placeholder-[#5c635b] cursor-not-allowed"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Phone (Read-only)</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Phone (Read-only)</label>
                             <input
                               type="tel"
                               name="phone"
                               value={formData?.phone || ''}
                               disabled
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg text-amber-900 bg-amber-100 placeholder-amber-400 cursor-not-allowed"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg text-[#e1dccc] bg-[#141613] placeholder-[#5c635b] cursor-not-allowed"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Date of Birth</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Date of Birth</label>
                             <input
                               type="date"
                               name="date_of_birth"
                               value={formData?.date_of_birth || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Gender</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Gender</label>
                             <select
                               name="gender"
                               value={formData?.gender || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
                               <option value="">Select Gender</option>
                               <option value="male">Male</option>
@@ -501,25 +499,25 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Address</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Address</label>
                             <textarea
                               name="address"
                               value={formData?.address || ''}
                               onChange={handleProfileChange}
                               rows={2}
                               placeholder="Enter your address"
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Occupation</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Occupation</label>
                             <input
                               type="text"
                               name="occupation"
                               value={formData?.occupation || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                               placeholder="Your occupation"
                             />
                           </div>
@@ -535,87 +533,87 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-6 rounded-xl border-2 border-amber-200">
-                        <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+                      <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
+                        <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
                           <span>🩺</span> Medical History
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Chronic Conditions</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Chronic Conditions</label>
                             <textarea
                               placeholder="Comma-separated (e.g., Diabetes, Hypertension)"
                               value={Array.isArray(formData?.chronic_conditions) ? formData.chronic_conditions.join(', ') : (formData?.chronic_conditions || '')}
                               onChange={(e) => handleArrayFieldChange('chronic_conditions', e.target.value)}
                               rows={3}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Allergies</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Allergies</label>
                             <textarea
                               placeholder="Comma-separated (e.g., Penicillin, Pollen)"
                               value={Array.isArray(formData?.allergies) ? formData.allergies.join(', ') : (formData?.allergies || '')}
                               onChange={(e) => handleArrayFieldChange('allergies', e.target.value)}
                               rows={3}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Family History</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Family History</label>
                             <textarea
                               placeholder="Comma-separated (e.g., Heart disease, Diabetes)"
                               value={Array.isArray(formData?.family_history) ? formData.family_history.join(', ') : (formData?.family_history || '')}
                               onChange={(e) => handleArrayFieldChange('family_history', e.target.value)}
                               rows={3}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Current Medications</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Current Medications</label>
                             <input
                               type="text"
                               placeholder="Comma-separated (e.g., Aspirin 100mg, Metformin 500mg)"
                               value={Array.isArray(formData?.current_medications) ? formData.current_medications.join(', ') : (typeof formData?.current_medications === 'string' ? formData.current_medications : '')}
                               onChange={(e) => handleArrayFieldChange('current_medications', e.target.value)}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Previous Surgeries</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Previous Surgeries</label>
                             <input
                               type="text"
                               placeholder="Comma-separated (e.g., Appendectomy (2015), Wisdom tooth extraction (2020))"
                               value={Array.isArray(formData?.previous_surgeries) ? formData.previous_surgeries.join(', ') : (typeof formData?.previous_surgeries === 'string' ? formData.previous_surgeries : '')}
                               onChange={(e) => handleArrayFieldChange('previous_surgeries', e.target.value)}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-6 rounded-xl border-2 border-amber-200">
-                        <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+
+                      <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
+                        <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
                           <span>💊</span> Ayurvedic Treatment History
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="flex items-center gap-2 text-amber-900">
+                            <label className="flex items-center gap-2 text-[#e1dccc]">
                               <input
                                 type="checkbox"
                                 name="previous_ayurvedic_treatment"
                                 checked={!!formData?.previous_ayurvedic_treatment}
                                 onChange={handleProfileChange}
-                                className="rounded text-amber-600 focus:ring-amber-500"
+                                className="rounded text-[#a3b18a] focus:ring-[#4a5548]"
                               />
                               <span className="font-medium">Previous Ayurvedic Treatment</span>
                             </label>
-                            <p className="text-xs text-amber-700 mt-1">Check if you've had Ayurvedic treatments before</p>
+                            <p className="text-xs text-[#8c9489] mt-1">Check if you've had Ayurvedic treatments before</p>
                           </div>
                         </div>
                       </div>
@@ -629,19 +627,19 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-6 rounded-xl border-2 border-amber-200">
-                        <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+                      <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
+                        <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
                           <span>🏃</span> Lifestyle Factors
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Exercise Frequency</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Exercise Frequency</label>
                             <select
                               name="exercise_frequency"
                               value={formData?.exercise_frequency || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
                               <option value="">Select frequency</option>
                               <option value="daily">Daily</option>
@@ -653,12 +651,12 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Sleep Pattern</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Sleep Pattern</label>
                             <select
                               name="sleep_pattern"
                               value={formData?.sleep_pattern || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
                               <option value="">Select pattern</option>
                               <option value="excellent">Excellent (7-9 hours)</option>
@@ -670,12 +668,12 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Smoking Status</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Smoking Status</label>
                             <select
                               name="smoking_status"
                               value={formData?.smoking_status || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
                               <option value="">Select status</option>
                               <option value="never">Never smoked</option>
@@ -686,12 +684,12 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Alcohol Consumption</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Alcohol Consumption</label>
                             <select
                               name="alcohol_consumption"
                               value={formData?.alcohol_consumption || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
                               <option value="">Select consumption</option>
                               <option value="never">Never</option>
@@ -703,7 +701,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Stress Level</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Stress Level</label>
                             <div className="flex items-center gap-3">
                               <input
                                 type="range"
@@ -712,56 +710,56 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                                 max="10"
                                 value={formData?.stress_level || 5}
                                 onChange={handleProfileChange}
-                                className="w-full h-2 bg-amber-200 rounded-lg appearance-none cursor-pointer"
+                                className="w-full h-2 bg-[#4a5548] rounded-lg appearance-none cursor-pointer"
                               />
-                              <span className="text-amber-900 font-medium w-8">
+                              <span className="text-[#e1dccc] font-medium w-8">
                                 {formData?.stress_level || 5}
                               </span>
                             </div>
-                            <div className="flex justify-between text-xs text-amber-700 mt-1">
+                            <div className="flex justify-between text-xs text-[#8c9489] mt-1">
                               <span>Low</span>
                               <span>High</span>
                             </div>
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Dietary Preferences</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Dietary Preferences</label>
                             <textarea
                               placeholder="Comma-separated (e.g., Vegetarian, Vegan, Gluten-free)"
                               value={Array.isArray(formData?.dietary_preferences) ? formData.dietary_preferences.join(', ') : (formData?.dietary_preferences || '')}
                               onChange={(e) => handleArrayFieldChange('dietary_preferences', e.target.value)}
                               rows={2}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-6 rounded-xl border-2 border-amber-200">
-                        <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+
+                      <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
+                        <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
                           <span>🎯</span> Health Goals
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Specific Health Concerns</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Specific Health Concerns</label>
                             <textarea
                               placeholder="Comma-separated health concerns (e.g., Acne, Weight loss)"
                               value={Array.isArray(formData?.specific_concerns) ? formData.specific_concerns.join(', ') : (formData?.specific_concerns || '')}
                               onChange={(e) => handleArrayFieldChange('specific_concerns', e.target.value)}
                               rows={3}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Treatment Goals</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Treatment Goals</label>
                             <textarea
                               placeholder="Comma-separated treatment goals (e.g., Better sleep, Weight management)"
                               value={Array.isArray(formData?.treatment_goals) ? formData.treatment_goals.join(', ') : (formData?.treatment_goals || '')}
                               onChange={(e) => handleArrayFieldChange('treatment_goals', e.target.value)}
                               rows={3}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
                         </div>
@@ -776,51 +774,51 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-6 rounded-xl border-2 border-amber-200">
-                        <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+                      <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
+                        <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
                           <span>🆘</span> Emergency Contact Information
                         </h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Emergency Contact Name</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Emergency Contact Name</label>
                             <input
                               type="text"
                               name="emergency_name"
                               value={formData?.emergency_name || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                               placeholder="Full name of emergency contact"
                             />
                           </div>
-                          
+
                           <div>
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Emergency Contact Phone</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Emergency Contact Phone</label>
                             <input
                               type="tel"
                               name="emergency_contact"
                               value={formData?.emergency_contact || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                               placeholder="+91 XXXXX XXXXX"
                             />
                           </div>
-                          
+
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-amber-900 mb-2">Relationship</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Relationship</label>
                             <input
                               type="text"
                               name="emergency_relation"
                               value={formData?.emergency_relation || ''}
                               onChange={handleProfileChange}
-                              className="w-full px-4 py-2 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-amber-900 bg-amber-50 placeholder-amber-400"
+                              className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                               placeholder="e.g., Spouse, Parent, Sibling"
                             />
                           </div>
                         </div>
-                        
-                        <div className="p-4 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg border-2 border-orange-300 mt-4">
-                          <p className="text-sm text-orange-900 font-medium flex items-start gap-2">
+
+                        <div className="p-4 bg-[#2c332b]/50 rounded-lg border border-[#3d453b] mt-4">
+                          <p className="text-sm text-[#a3b18a] font-medium flex items-start gap-2">
                             <span>🚨</span>
                             <span>Emergency contact information will be securely stored and only accessed in case of medical emergencies according to Ayurvedic protocols.</span>
                           </p>
@@ -835,7 +833,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
             {/* Footer Actions */}
             {!loading && formData && (
               <motion.div
-                className="sticky bottom-0 bg-gradient-to-r from-amber-100 to-orange-100 border-t-2 border-amber-200 px-6 py-4 flex justify-end gap-3"
+                className="sticky bottom-0 bg-[#141613] border-t border-[#2c332b] px-6 py-4 flex justify-end gap-3"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
               >
@@ -843,17 +841,17 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={onClose}
-                  className="px-6 py-2 border-2 border-amber-300 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors font-medium"
+                  className="px-6 py-2 border border-[#3d453b] text-[#8c9489] rounded-lg hover:bg-[#2c332b] hover:text-[#e1dccc] transition-colors font-medium"
                 >
                   Cancel
                 </motion.button>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
                   disabled={!hasChanges || saving}
-                  className="px-6 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg hover:from-amber-700 hover:to-orange-700 transition-all font-medium shadow-lg disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-2 bg-gradient-to-r from-[#1a4731] to-[#2c5e41] text-[#e1dccc] rounded-lg hover:from-[#2c5e41] hover:to-[#3d7551] transition-all font-medium shadow-lg disabled:opacity-50 flex items-center gap-2 border border-[#4a805f]"
                 >
                   {saving ? (
                     <>

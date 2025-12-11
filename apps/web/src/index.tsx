@@ -1,4 +1,4 @@
-// D:\Downloads\swasthyasync\apps\web\src\index.tsx
+// apps/web/src/index.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';

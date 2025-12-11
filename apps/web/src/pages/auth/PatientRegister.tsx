@@ -1,10 +1,8 @@
 // apps/web/src/pages/auth/PatientRegister.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
-import { useEffect } from 'react';
-import { supabase } from '../../utils/supabase'; // Make sure you have this import
 
 interface RegistrationData {
   firstName: string;
@@ -16,14 +14,14 @@ interface RegistrationData {
   emergencyName: string;
   emergencyRelation: string;
   address: string;
-  
+
   // Enhanced health information
   chronicConditions: string[];
   currentMedications: string[];
   allergies: string[];
   previousSurgeries: string[];
   familyHistory: string[];
-  
+
   // Lifestyle information
   occupation: string;
   exerciseFrequency: string;
@@ -32,12 +30,12 @@ interface RegistrationData {
   smokingStatus: string;
   alcoholConsumption: string;
   stressLevel: number;
-  
+
   // Ayurvedic specific
   previousAyurvedicTreatment: boolean;
   specificConcerns: string[];
   treatmentGoals: string[];
-  
+
   // Consent
   consent: boolean;
   healthDataConsent: boolean;
@@ -91,65 +89,65 @@ const PatientRegister: React.FC = () => {
 
   const totalPages = 2;
 
-// On mount, check if user is already authenticated and their onboarding status
-useEffect(() => {
-  const checkAuthAndData = async () => {
-    try {
-      console.log('Checking authentication...');
+  // On mount, check if user is already authenticated and their onboarding status
+  useEffect(() => {
+    const checkAuthAndData = async () => {
+      try {
+        console.log('Checking authentication...');
 
-      // Check for stored JWT token instead of Supabase session
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
+        // Check for stored JWT token instead of Supabase session
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('user');
 
-      if (token && userData) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          console.log('Found stored auth:', parsedUser.id);
+        if (token && userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            console.log('Found stored auth:', parsedUser.id);
 
-          // Verify token is still valid by making an API call
-          const response = await api.get('/auth/profile', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+            // Verify token is still valid by making an API call
+            const response = await api.get('/auth/profile', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
 
-          if (response.success && response.user) {
-            const user = response.user;
+            if (response.success && response.user) {
+              const user = response.user;
 
-            // Ensure phone & userId are available
-            if (!user.phone || !user.id) {
-              console.error('[PatientRegister] Missing phone or userId');
-              navigate('/auth/phone');
-              return;
+              // Ensure phone & userId are available
+              if (!user.phone || !user.id) {
+                console.error('[PatientRegister] Missing phone or userId');
+                navigate('/auth/phone');
+                return;
+              }
+
+              // Check onboarding status
+              if (user.onboarding?.questionnaire_completed) {
+                navigate('/patient/dashboard');
+                return;
+              }
+
+              if (user.onboarding?.personal_details_completed) {
+                navigate('/auth/prakriti-questionnaire');
+                return;
+              }
             }
-
-            // Check onboarding status
-            if (user.onboarding?.questionnaire_completed) {
-              navigate('/patient/dashboard');
-              return;
-            }
-
-            if (user.onboarding?.personal_details_completed) {
-              navigate('/auth/prakriti-questionnaire');
-              return;
-            }
+          } catch (tokenError) {
+            console.log('Token validation failed, clearing stored auth');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
           }
-        } catch (tokenError) {
-          console.log('Token validation failed, clearing stored auth');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+        } else {
+          console.log('No stored authentication found');
         }
-      } else {
-        console.log('No stored authentication found');
+
+        setCheckingAuth(false);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setCheckingAuth(false);
       }
+    };
 
-      setCheckingAuth(false);
-    } catch (error) {
-      console.error('Auth check error:', error);
-      setCheckingAuth(false);
-    }
-  };
-
-  checkAuthAndData();
-}, [navigate]);
+    checkAuthAndData();
+  }, [navigate]);
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -175,20 +173,11 @@ useEffect(() => {
     }
   };
 
-  const handleArrayInput = (field: keyof RegistrationData, value: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: checked 
-        ? [...(prev[field] as string[]), value]
-        : (prev[field] as string[]).filter(item => item !== value)
-    }));
-  };
-
   const validateCurrentPage = (): boolean => {
     switch (currentPage) {
       case 1:
-        if (!formData.firstName.trim() || !formData.lastName.trim() || 
-            !formData.dateOfBirth || !formData.gender || !formData.email.trim()) {
+        if (!formData.firstName.trim() || !formData.lastName.trim() ||
+          !formData.dateOfBirth || !formData.gender || !formData.email.trim()) {
           setError('Please fill in all required fields');
           return false;
         }
@@ -222,7 +211,7 @@ useEffect(() => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateCurrentPage()) {
       return;
     }
@@ -243,12 +232,12 @@ useEffect(() => {
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
         address: formData.address.trim(),
-        
+
         // Emergency contact
         emergencyContact: formData.emergencyContact.trim(),
         emergencyName: formData.emergencyName.trim(),
         emergencyRelation: formData.emergencyRelation,
-        
+
         // Enhanced health data
         occupation: formData.occupation,
         chronicConditions: formData.chronicConditions,
@@ -265,7 +254,7 @@ useEffect(() => {
         specificConcerns: formData.specificConcerns,
         treatmentGoals: formData.treatmentGoals,
         dietaryPreferences: formData.dietaryPreferences,
-        
+
         // Consent - REQUIRED
         consent: formData.healthDataConsent || formData.consent,
       };
@@ -286,23 +275,23 @@ useEffect(() => {
       const response = await api.register(registrationPayload);
       console.log('Registration response:', response);
 
-    if (response.success && response.token && response.user) {
-  const token = response.token;
-  const user = response.user;
+      if (response.success && response.token && response.user) {
+        const token = response.token;
+        const user = response.user;
 
-  // Store authentication token only
-  localStorage.setItem('token', token);
-  
-  // Clear any old localStorage data
-  localStorage.removeItem('registrationData');
-  localStorage.removeItem('prakritiResults');
-  localStorage.removeItem('user'); // Remove this completely
+        // Store authentication token only
+        localStorage.setItem('token', token);
 
-  console.log('Registration successful, user data saved to database');
-  navigate('/auth/prakriti-questionnaire', { state: { userId: user.id } });
-} else {
-  throw new Error('Registration response missing required fields');
-}
+        // Clear any old localStorage data
+        localStorage.removeItem('registrationData');
+        localStorage.removeItem('prakritiResults');
+        localStorage.removeItem('user'); // Remove this completely
+
+        console.log('Registration successful, user data saved to database');
+        navigate('/auth/prakriti-questionnaire', { state: { userId: user.id } });
+      } else {
+        throw new Error('Registration response missing required fields');
+      }
 
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -316,923 +305,407 @@ useEffect(() => {
   // Show loading while checking authentication
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center" 
-        style={{
-          background: `
-            radial-gradient(ellipse at top left, rgba(255, 183, 77, 0.15), transparent 40%),
-            radial-gradient(ellipse at bottom right, rgba(139, 69, 19, 0.2), transparent 40%),
-            linear-gradient(135deg, #2c1810 0%, #3d2817 25%, #4a3420 50%, #3d2817 75%, #2c1810 100%)
-          `
-        }}
-      >
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl animate-pulse"
-            style={{
-              background: 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-              boxShadow: '0 0 30px rgba(255, 215, 0, 0.5)'
-            }}
-          >
-            🌿
-          </div>
-          <p className="text-lg" style={{ color: '#ffd700' }}>
-            Checking your account...
-          </p>
+          <div className="w-12 h-12 mx-auto mb-4 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-lg text-slate-600 font-medium">Checking your account...</p>
         </div>
       </div>
     );
   }
 
-  const CustomCheckbox = ({ checked, onChange, children }: { checked: boolean; onChange: () => void; children: React.ReactNode }) => (
-    <label className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-opacity-10 hover:bg-yellow-400">
-      <div 
-        className={`custom-checkbox ${checked ? 'checked' : ''}`}
-        onClick={onChange}
-      />
-      <span className="text-sm" style={{ color: '#6b4423' }}>
-        {children}
-      </span>
-    </label>
-  );
-
   return (
-    <>
-      {/* Ayurvedic Animations & Styles */}
-      <style>{`
-        @keyframes rotateMandala {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes floatHerb {
-          0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0.15; }
-          25% { transform: translate(30px, -40px) rotate(90deg) scale(1.1); opacity: 0.2; }
-          50% { transform: translate(-20px, -60px) rotate(180deg) scale(0.9); opacity: 0.1; }
-          75% { transform: translate(-40px, -20px) rotate(270deg) scale(1.05); opacity: 0.18; }
-        }
-        @keyframes ayurvedicBreathe {
-          0%, 100% { transform: scale(0.8); opacity: 0.3; filter: blur(2px); }
-          50% { transform: scale(1.2); opacity: 0.6; filter: blur(0px); }
-        }
-        @keyframes pulseExpand {
-          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-          100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
-        }
-        @keyframes goldenShimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .herb-float-1 { animation: floatHerb 25s infinite ease-in-out; }
-        .herb-float-2 { animation: floatHerb 30s infinite ease-in-out; animation-delay: -5s; }
-        .herb-float-3 { animation: floatHerb 22s infinite ease-in-out; animation-delay: -10s; }
-        .herb-float-4 { animation: floatHerb 28s infinite ease-in-out; animation-delay: -15s; }
-        .mandala-rotate { animation: rotateMandala 60s linear infinite; }
-        .breathe-1 { animation: ayurvedicBreathe 6s ease-in-out infinite; }
-        .breathe-2 { animation: ayurvedicBreathe 6s ease-in-out infinite reverse; animation-delay: -3s; }
-        .pulse-ring-1 { animation: pulseExpand 4s ease-out infinite; }
-        .pulse-ring-2 { animation: pulseExpand 4s ease-out infinite; animation-delay: 1s; }
-        .pulse-ring-3 { animation: pulseExpand 4s ease-out infinite; animation-delay: 2s; }
-        .golden-shimmer {
-          background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
-          background-size: 200% 100%;
-          animation: goldenShimmer 3s linear infinite;
-        }
-        .fade-in-up { animation: fadeInUp 0.6s ease-out; }
-        .custom-checkbox {
-          display: inline-block;
-          width: 18px;
-          height: 18px;
-          background: rgba(255, 248, 220, 0.6);
-          border: 2px solid #daa520;
-          border-radius: 4px;
-          position: relative;
-          transition: all 0.3s;
-          flex-shrink: 0;
-        }
-        .custom-checkbox.checked {
-          background: linear-gradient(135deg, #b8860b, #daa520);
-        }
-        .custom-checkbox.checked::after {
-          content: "";
-          position: absolute;
-          left: 5px;
-          top: 2px;
-          width: 5px;
-          height: 10px;
-          border: solid white;
-          border-width: 0 2px 2px 0;
-          transform: rotate(45deg);
-        }
-        .ayurvedic-input {
-          background: rgba(255, 248, 220, 0.6);
-          border: 2px solid rgba(218, 165, 32, 0.3);
-          border-radius: 8px;
-          padding: 12px;
-          transition: all 0.3s;
-          color: #2c1810;
-        }
-        .ayurvedic-input:focus {
-          outline: none;
-          border-color: #daa520;
-          box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.1);
-        }
-        .checkbox-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 8px;
-        }
-        .compact-checkbox-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 6px;
-        }
-      `}</style>
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-inter text-slate-900">
+      <div className="sm:mx-auto sm:w-full sm:max-w-4xl">
+        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-xl sm:px-10 border border-slate-100 relative overflow-hidden">
 
-      <div className="min-h-screen py-8 px-4 relative overflow-hidden"
-        style={{
-          background: `
-            radial-gradient(ellipse at top left, rgba(255, 183, 77, 0.15), transparent 40%),
-            radial-gradient(ellipse at bottom right, rgba(139, 69, 19, 0.2), transparent 40%),
-            radial-gradient(ellipse at center, rgba(255, 140, 0, 0.1), transparent 60%),
-            linear-gradient(135deg, #2c1810 0%, #3d2817 25%, #4a3420 50%, #3d2817 75%, #2c1810 100%)
-          `
-        }}>
-
-        {/* Mandala overlay */}
-        <div className="fixed inset-0 opacity-5 pointer-events-none mandala-rotate"
-          style={{
-            backgroundImage: `
-              radial-gradient(circle at 20% 20%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 80% 80%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 80% 20%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 20% 80%, transparent 30%, rgba(255, 183, 77, 0.1) 30.5%, transparent 31%),
-              radial-gradient(circle at 50% 50%, transparent 40%, rgba(255, 183, 77, 0.1) 40.5%, transparent 41%)
-            `
-          }}
-        />
-        {/* Floating herbs */}
-        <div className="fixed w-10 h-10 top-[10%] left-[10%] rounded-full herb-float-1 opacity-15"
-          style={{ background: 'radial-gradient(circle, #8b6914 0%, transparent 70%)' }} />
-        <div className="fixed w-15 h-15 top-[70%] right-[15%] rounded-full herb-float-2 opacity-15"
-          style={{ background: 'radial-gradient(circle, #cd853f 0%, transparent 70%)' }} />
-        <div className="fixed w-9 h-9 bottom-[15%] left-[50%] rounded-full herb-float-3 opacity-15"
-          style={{ background: 'radial-gradient(circle, #daa520 0%, transparent 70%)' }} />
-        <div className="fixed w-11 h-11 top-[50%] left-[5%] rounded-full herb-float-4 opacity-15"
-          style={{ background: 'radial-gradient(circle, #b8860b 0%, transparent 70%)' }} />
-
-        {/* Breathing light */}
-        <div className="fixed w-96 h-96 md:w-[600px] md:h-[600px] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div className="absolute inset-0 rounded-full breathe-1"
-            style={{ background: 'radial-gradient(circle, rgba(255, 183, 77, 0.4), rgba(218, 165, 32, 0.1) 40%, transparent 70%)' }} />
-          <div className="absolute w-4/5 h-4/5 top-[10%] left-[10%] rounded-full breathe-2"
-            style={{ background: 'radial-gradient(circle, rgba(255, 215, 0, 0.3), rgba(184, 134, 11, 0.15) 30%, transparent 60%)' }} />
-        </div>
-
-        {/* Pulse rings */}
-        <div className="fixed w-[800px] h-[800px] top-1/2 left-1/2 border border-yellow-400/20 rounded-full pulse-ring-1" />
-        <div className="fixed w-[800px] h-[800px] top-1/2 left-1/2 border border-yellow-400/20 rounded-full pulse-ring-2" />
-        <div className="fixed w-[800px] h-[800px] top-1/2 left-1/2 border border-yellow-400/20 rounded-full pulse-ring-3" />
-
-        <div className="max-w-6xl mx-auto relative z-10">
-         {/* Progress Bar */}
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium" style={{ color: '#ffd700' }}>
-                Step {currentPage} of {totalPages}
-              </span>
-              <span className="text-sm" style={{ color: '#daa520' }}>
-                {Math.round((currentPage / totalPages) * 100)}% Complete
-              </span>
+          {/* Header */}
+          <div className="mb-8 text-center relative z-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4 ring-8 ring-blue-50/50">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
             </div>
-            <div className="w-full rounded-full h-2" style={{ background: 'rgba(139, 69, 19, 0.3)' }}>
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(currentPage / totalPages) * 100}%` }}
-                transition={{ duration: 0.5 }}
-                className="h-2 rounded-full"
-                style={{ background: 'linear-gradient(90deg, #b8860b, #daa520, #ffd700)' }}
-              />
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Review Your Profile
+            </h2>
+            <p className="mt-2 text-sm text-slate-500 max-w-sm mx-auto">
+              Please complete your registration to access your personalized health dashboard.
+            </p>
+          </div>
+
+          {/* Progress Steps */}
+          <div className="mb-10 max-w-lg mx-auto">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t-2 border-slate-100" />
+              </div>
+              <div className="relative flex justify-between">
+                {[1, 2].map((step) => (
+                  <div key={step} className="flex flex-col items-center">
+                    <div
+                      className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ring-4 ring-white transition-colors duration-300 ${currentPage >= step
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-200 text-slate-500'
+                        }`}
+                    >
+                      {step}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </motion.div>
+            <div className="flex justify-between mt-2 text-xs font-medium text-slate-500 px-2 lg:px-0">
+              <span className={currentPage >= 1 ? 'text-blue-600' : ''}>Personal Info</span>
+              <span className={currentPage >= 2 ? 'text-blue-600' : ''}>Medical Context</span>
+            </div>
+          </div>
 
-          {/* Main Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="relative rounded-3xl p-8 overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255, 248, 220, 0.95), rgba(250, 240, 190, 0.92))',
-              boxShadow: '0 30px 60px rgba(139, 69, 19, 0.4), 0 15px 35px rgba(184, 134, 11, 0.3)',
-              border: '1px solid rgba(218, 165, 32, 0.3)'
-            }}
-          >
-            {/* Golden shimmer overlay */}
-            <div className="absolute inset-0 golden-shimmer opacity-5 pointer-events-none" />
-
+          <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
             <AnimatePresence mode="wait">
-              {/* Page 1: Personal Information, Emergency Contact & Health Overview */}
               {currentPage === 1 && (
                 <motion.div
-                  key="page1"
-                  initial={{ opacity: 0, x: 50 }}
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6"
                 >
-                  <div className="text-center mb-8">
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl"
-                      style={{
-                        background: 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-                        boxShadow: '0 0 30px rgba(255, 215, 0, 0.5)'
-                      }}
-                    >
-                      🌿
-                    </motion.div>
-                    <h2 className="text-3xl font-bold mb-2" style={{ color: '#2c1810' }}>
-                      Welcome to SwastyaSync
-                    </h2>
-                    <p style={{ color: '#6b4423' }}>Let's set up your profile efficiently</p>
-
-                    {/* Show pending identifier for clarity */}
-                    {pendingIdentifierValue && (
-                      <p className="text-sm mt-2" style={{ color: '#8b6914' }}>
-                        Registering with <strong>{pendingIdentifierType === 'phone' ? pendingIdentifierValue : pendingIdentifierValue}</strong>
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                    {/* Personal Information */}
-                    <div className="xl:col-span-1 space-y-4">
-                      <h3 className="font-semibold text-lg mb-4" style={{ color: '#8b6914' }}>
-                        Personal Details
-                      </h3>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            First Name *
-                          </label>
-                          <input
-                            type="text"
-                            name="firstName"
-                            value={formData.firstName}
-                            onChange={handleChange}
-                            required
-                            className="w-full ayurvedic-input"
-                            placeholder="First name"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Last Name *
-                          </label>
-                          <input
-                            type="text"
-                            name="lastName"
-                            value={formData.lastName}
-                            onChange={handleChange}
-                            required
-                            className="w-full ayurvedic-input"
-                            placeholder="Last name"
-                          />
-                        </div>
+                  {/* Personal Information Section */}
+                  <div>
+                    <h3 className="text-lg font-semibold leading-6 text-slate-900 border-b border-slate-100 pb-3 mb-5 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
+                      Personal Information
+                    </h3>
+                    <div className="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
+                      <div className="sm:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">First Name <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleChange}
+                          required
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                          placeholder="e.g. John"
+                        />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Date of Birth *
-                          </label>
-                          <input
-                            type="date"
-                            name="dateOfBirth"
-                            value={formData.dateOfBirth}
-                            onChange={handleChange}
-                            required
-                            max={new Date().toISOString().split('T')[0]}
-                            className="w-full ayurvedic-input"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Gender *
-                          </label>
-                          <select
-                            name="gender"
-                            value={formData.gender}
-                            onChange={handleChange}
-                            required
-                            className="w-full ayurvedic-input"
-                          >
-                            <option value="">Select</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
+                      <div className="sm:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Last Name <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleChange}
+                          required
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                          placeholder="e.g. Doe"
+                        />
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                          Email *
-                        </label>
+                      <div className="sm:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Date of Birth <span className="text-red-500">*</span></label>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          value={formData.dateOfBirth}
+                          onChange={handleChange}
+                          required
+                          max={new Date().toISOString().split('T')[0]}
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Gender <span className="text-red-500">*</span></label>
+                        <select
+                          name="gender"
+                          value={formData.gender}
+                          onChange={handleChange}
+                          required
+                          className="block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Email <span className="text-red-500">*</span></label>
                         <input
                           type="email"
                           name="email"
                           value={formData.email}
                           onChange={handleChange}
                           required
-                          className="w-full ayurvedic-input"
-                          placeholder="your.email@example.com"
+                          placeholder="you@example.com"
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
                         />
+                        {pendingIdentifierValue && pendingIdentifierType === 'email' && (
+                          <div className="mt-1.5 flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded w-fit">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                            Verified via OTP
+                          </div>
+                        )}
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                          Address
-                        </label>
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
                         <textarea
                           name="address"
                           value={formData.address}
                           onChange={handleChange}
-                          rows={2}
-                          className="w-full ayurvedic-input"
-                          placeholder="Your address"
+                          rows={3}
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white resize-none"
+                          placeholder="Apartment, Studio, or Floor"
                         />
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Emergency Contact */}
-                      <h3 className="font-semibold text-lg mt-6 mb-4" style={{ color: '#8b6914' }}>
-                        Emergency Contact *
-                      </h3>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                          Name *
-                        </label>
+                  {/* Emergency Contact */}
+                  <div className="pt-2">
+                    <h3 className="text-lg font-semibold leading-6 text-slate-900 border-b border-slate-100 pb-3 mb-5 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-red-400 rounded-full"></span>
+                      Emergency Contact
+                      <span className="text-xs font-normal text-slate-400 ml-2">(In case of emergency)</span>
+                    </h3>
+                    <div className="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
+                      <div className="sm:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Contact Name <span className="text-red-500">*</span></label>
                         <input
                           type="text"
                           name="emergencyName"
                           value={formData.emergencyName}
                           onChange={handleChange}
                           required
-                          className="w-full ayurvedic-input"
-                          placeholder="Contact name"
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                          placeholder="Contact Person"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Phone *
-                          </label>
-                          <input
-                            type="tel"
-                            name="emergencyContact"
-                            value={formData.emergencyContact}
-                            onChange={handleChange}
-                            required
-                            className="w-full ayurvedic-input"
-                            placeholder="Phone number"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Relation *
-                          </label>
-                          <select
-                            name="emergencyRelation"
-                            value={formData.emergencyRelation}
-                            onChange={handleChange}
-                            required
-                            className="w-full ayurvedic-input"
-                          >
-                            <option value="">Select</option>
-                            <option value="Father">Father</option>
-                            <option value="Mother">Mother</option>
-                            <option value="Spouse">Spouse</option>
-                            <option value="Sibling">Sibling</option>
-                            <option value="Child">Child</option>
-                            <option value="Friend">Friend</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Health & Lifestyle Information */}
-                    <div className="xl:col-span-2 space-y-6">
-                      <h3 className="font-semibold text-lg mb-4" style={{ color: '#8b6914' }}>
-                        Health & Lifestyle Overview
-                      </h3>
-                      
-                      {/* Compact lifestyle grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Occupation
-                          </label>
-                          <input
-                            type="text"
-                            name="occupation"
-                            value={formData.occupation}
-                            onChange={handleChange}
-                            className="w-full ayurvedic-input"
-                            placeholder="Your profession"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Exercise
-                          </label>
-                          <select
-                            name="exerciseFrequency"
-                            value={formData.exerciseFrequency}
-                            onChange={handleChange}
-                            className="w-full ayurvedic-input"
-                          >
-                            <option value="">Select</option>
-                            <option value="sedentary">Sedentary</option>
-                            <option value="light">Light</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="active">Active</option>
-                            <option value="very_active">Very Active</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Sleep Pattern
-                          </label>
-                          <select
-                            name="sleepPattern"
-                            value={formData.sleepPattern}
-                            onChange={handleChange}
-                            className="w-full ayurvedic-input"
-                          >
-                            <option value="">Select</option>
-                            <option value="early_bird">Early Bird</option>
-                            <option value="normal">Normal</option>
-                            <option value="night_owl">Night Owl</option>
-                            <option value="irregular">Irregular</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Smoking Status
-                          </label>
-                          <select
-                            name="smokingStatus"
-                            value={formData.smokingStatus}
-                            onChange={handleChange}
-                            className="w-full ayurvedic-input"
-                          >
-                            <option value="">Select</option>
-                            <option value="never">Never</option>
-                            <option value="former">Former</option>
-                            <option value="current">Current</option>
-                          </select>
-                        </div>
+                      <div className="sm:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Contact Number <span className="text-red-500">*</span></label>
+                        <input
+                          type="tel"
+                          name="emergencyContact"
+                          value={formData.emergencyContact}
+                          onChange={handleChange}
+                          required
+                          className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                          placeholder="+1 (555) 000-0000"
+                        />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Alcohol Consumption
-                          </label>
-                          <select
-                            name="alcoholConsumption"
-                            value={formData.alcoholConsumption}
-                            onChange={handleChange}
-                            className="w-full ayurvedic-input"
-                          >
-                            <option value="">Select</option>
-                            <option value="never">Never</option>
-                            <option value="rarely">Rarely</option>
-                            <option value="occasional">Occasional</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="frequent">Frequent</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Stress Level: {formData.stressLevel}
-                          </label>
-                          <input
-                            type="range"
-                            name="stressLevel"
-                            min="1"
-                            max="10"
-                            value={formData.stressLevel}
-                            onChange={handleChange}
-                            className="w-full"
-                            style={{ accentColor: '#daa520' }}
-                          />
-                          <div className="flex justify-between text-xs mt-1" style={{ color: '#8b6914' }}>
-                            <span>Low (1)</span>
-                            <span>High (10)</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Essential Health Conditions */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="font-medium text-md mb-3" style={{ color: '#8b6914' }}>
-                            Common Allergies
-                          </h4>
-                          <div className="compact-checkbox-grid">
-                            {['Food Allergies', 'Medications', 'Environmental', 'Skin Allergies', 'None', 'Other'].map(allergy => (
-                              <CustomCheckbox
-                                key={allergy}
-                                checked={formData.allergies.includes(allergy)}
-                                onChange={() => handleArrayInput('allergies', allergy, !formData.allergies.includes(allergy))}
-                              >
-                                {allergy}
-                              </CustomCheckbox>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Medications and Family History */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Current Medications (if any)
-                          </label>
-                          <textarea
-                            value={formData.currentMedications.join(', ')}
-                            onChange={(e) => setFormData(prev => ({ ...prev, currentMedications: e.target.value.split(', ').filter(med => med.trim()) }))}
-                            rows={2}
-                            className="w-full ayurvedic-input"
-                            placeholder="List medications separated by commas"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Family Medical History
-                          </label>
-                          <textarea
-                            value={formData.familyHistory.join(', ')}
-                            onChange={(e) => setFormData(prev => ({ ...prev, familyHistory: e.target.value.split(', ').filter(history => history.trim()) }))}
-                            rows={2}
-                            className="w-full ayurvedic-input"
-                            placeholder="Heart disease, diabetes, cancer, etc."
-                          />
-                        </div>
-                      </div>
-
-                      {/* Ayurvedic Section */}
-                      <div className="mt-6">
-                        <h4 className="font-medium text-md mb-4" style={{ color: '#8b6914' }}>
-                          Ayurvedic Assessment
-                        </h4>
-                        
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium mb-3" style={{ color: '#6b4423' }}>
-                            Previous Ayurvedic treatment?
-                          </label>
-                          <div className="flex gap-6">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name="previousAyurvedicTreatment"
-                                checked={formData.previousAyurvedicTreatment === true}
-                                onChange={() => setFormData(prev => ({ ...prev, previousAyurvedicTreatment: true }))}
-                                style={{ accentColor: '#daa520' }}
-                              />
-                              <span style={{ color: '#6b4423' }}>Yes</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name="previousAyurvedicTreatment"
-                                checked={formData.previousAyurvedicTreatment === false}
-                                onChange={() => setFormData(prev => ({ ...prev, previousAyurvedicTreatment: false }))}
-                                style={{ accentColor: '#daa520' }}
-                              />
-                              <span style={{ color: '#6b4423' }}>No</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          <div>
-                            <h5 className="font-medium text-sm mb-3" style={{ color: '#8b6914' }}>
-                              Primary Health Concerns
-                            </h5>
-                            <div className="compact-checkbox-grid">
-                              {['Digestive Issues', 'Sleep Problems', 'Stress & Anxiety', 'Weight Management', 'Joint Pain', 'Fatigue', 'Other'].map(concern => (
-                                <CustomCheckbox
-                                  key={concern}
-                                  checked={formData.specificConcerns.includes(concern)}
-                                  onChange={() => handleArrayInput('specificConcerns', concern, !formData.specificConcerns.includes(concern))}
-                                >
-                                  {concern}
-                                </CustomCheckbox>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <h5 className="font-medium text-sm mb-3" style={{ color: '#8b6914' }}>
-                              Treatment Goals
-                            </h5>
-                            <div className="compact-checkbox-grid">
-                              {['Prevention & Wellness', 'Disease Management', 'Mental Peace', 'Physical Strength', 'Better Sleep', 'Energy Enhancement', 'Other'].map(goal => (
-                                <CustomCheckbox
-                                  key={goal}
-                                  checked={formData.treatmentGoals.includes(goal)}
-                                  onChange={() => handleArrayInput('treatmentGoals', goal, !formData.treatmentGoals.includes(goal))}
-                                >
-                                  {goal}
-                                </CustomCheckbox>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <h5 className="font-medium text-sm mb-3" style={{ color: '#8b6914' }}>
-                            Dietary Preferences
-                          </h5>
-                          <div className="compact-checkbox-grid">
-                            {['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Ayurvedic Diet', 'No Restrictions', 'Other'].map(diet => (
-                              <CustomCheckbox
-                                key={diet}
-                                checked={formData.dietaryPreferences.includes(diet)}
-                                onChange={() => handleArrayInput('dietaryPreferences', diet, !formData.dietaryPreferences.includes(diet))}
-                              >
-                                {diet}
-                              </CustomCheckbox>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Relationship <span className="text-red-500">*</span></label>
+                        <select
+                          name="emergencyRelation"
+                          value={formData.emergencyRelation}
+                          onChange={handleChange}
+                          required
+                          className="block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                        >
+                          <option value="">Select Relation</option>
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Spouse">Spouse</option>
+                          <option value="Sibling">Sibling</option>
+                          <option value="Child">Child</option>
+                          <option value="Friend">Friend</option>
+                          <option value="Other">Other</option>
+                        </select>
                       </div>
                     </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* Page 2: Consent & Final Details */}
               {currentPage === 2 && (
                 <motion.div
-                  key="page2"
-                  initial={{ opacity: 0, x: 50 }}
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6"
                 >
-                  <div className="text-center mb-8">
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl"
-                      style={{
-                        background: 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-                        boxShadow: '0 0 30px rgba(255, 215, 0, 0.5)'
-                      }}
-                    >
-                      📋
-                    </motion.div>
-                    <h2 className="text-3xl font-bold mb-2" style={{ color: '#2c1810' }}>
-                      Final Step - Consent & Privacy
-                    </h2>
-                    <p style={{ color: '#6b4423' }}>Review and accept our terms to complete your registration</p>
+                  <h3 className="text-lg font-semibold leading-6 text-slate-900 border-b border-slate-100 pb-3 mb-5 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-teal-500 rounded-full"></span>
+                    Lifestyle & Medical Context
+                  </h3>
+
+                  <div className="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Occupation</label>
+                      <input
+                        type="text"
+                        name="occupation"
+                        value={formData.occupation}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                        placeholder="Current Profession"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Exercise Frequency</label>
+                      <select
+                        name="exerciseFrequency"
+                        value={formData.exerciseFrequency}
+                        onChange={handleChange}
+                        className="block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                      >
+                        <option value="">Select Frequency</option>
+                        <option value="sedentary">Sedentary (Little to no exercise)</option>
+                        <option value="light">Light (1-2 days/week)</option>
+                        <option value="moderate">Moderate (3-4 days/week)</option>
+                        <option value="active">Active (5+ days/week)</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Smoking Status</label>
+                      <select
+                        name="smokingStatus"
+                        value={formData.smokingStatus}
+                        onChange={handleChange}
+                        className="block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                      >
+                        <option value="">Select Status</option>
+                        <option value="never">Never Smoked</option>
+                        <option value="former">Former Smoker</option>
+                        <option value="current">Current Smoker</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Alcohol Consumption</label>
+                      <select
+                        name="alcoholConsumption"
+                        value={formData.alcoholConsumption}
+                        onChange={handleChange}
+                        className="block w-full px-4 py-2.5 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm bg-slate-50/50 transition-all hover:bg-white focus:bg-white"
+                      >
+                        <option value="">Select Status</option>
+                        <option value="none">None</option>
+                        <option value="occasional">Occasional</option>
+                        <option value="regular">Regular</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="max-w-4xl mx-auto space-y-6">
-                    {/* Additional Health Details */}
-                    <div className="mb-8 p-6 rounded-2xl" 
-                      style={{ 
-                        background: 'rgba(255, 248, 220, 0.3)', 
-                        border: '2px solid rgba(218, 165, 32, 0.2)' 
-                      }}
-                    >
-                      <h3 className="font-semibold text-lg mb-4" style={{ color: '#8b6914' }}>
-                        Additional Information (Optional)
-                      </h3>
-                      
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Previous Surgeries (if any)
-                          </label>
-                          <textarea
-                            value={formData.previousSurgeries.join(', ')}
-                            onChange={(e) => setFormData(prev => ({ ...prev, previousSurgeries: e.target.value.split(', ').filter(surgery => surgery.trim()) }))}
-                            rows={2}
-                            className="w-full ayurvedic-input"
-                            placeholder="List any previous surgeries"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: '#6b4423' }}>
-                            Additional Notes
-                          </label>
-                          <textarea
-                            rows={2}
-                            className="w-full ayurvedic-input"
-                            placeholder="Any other health information you'd like to share"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Consent Section */}
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 mt-8">
+                    <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Consent & Declarations</h4>
                     <div className="space-y-4">
-                      <div className="p-6 rounded-2xl" 
-                        style={{ 
-                          background: 'rgba(255, 248, 220, 0.4)', 
-                          border: '2px solid rgba(218, 165, 32, 0.2)' 
-                        }}
-                      >
-                        <CustomCheckbox
-                          checked={formData.healthDataConsent}
-                          onChange={() => handleChange({ target: { name: 'healthDataConsent', type: 'checkbox', checked: !formData.healthDataConsent } } as any)}
-                        >
-                          <div>
-                            <strong style={{ color: '#8b6914' }}>Health Data Consent *</strong>
-                            <br />
-                            <span>I consent to the collection, processing, and storage of my health information for personalized Ayurvedic treatment. My data will be kept confidential and secure.</span>
-                          </div>
-                        </CustomCheckbox>
+                      <div className="flex items-start">
+                        <div className="flex items-center h-5">
+                          <input
+                            id="consent1"
+                            name="healthDataConsent"
+                            type="checkbox"
+                            checked={formData.healthDataConsent}
+                            onChange={handleChange}
+                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-slate-300 rounded cursor-pointer"
+                          />
+                        </div>
+                        <div className="ml-3 text-sm">
+                          <label htmlFor="consent1" className="font-medium text-slate-700 cursor-pointer">HIPAA & Health Data Consent</label>
+                          <p className="text-slate-500 mt-0.5">I explicitly consent to the processing and storage of my health data for the purpose of receiving medical services.</p>
+                        </div>
                       </div>
 
-                      <div className="p-6 rounded-2xl" 
-                        style={{ 
-                          background: 'rgba(255, 248, 220, 0.4)', 
-                          border: '2px solid rgba(218, 165, 32, 0.2)' 
-                        }}
-                      >
-                        <CustomCheckbox
-                          checked={formData.treatmentConsent}
-                          onChange={() => handleChange({ target: { name: 'treatmentConsent', type: 'checkbox', checked: !formData.treatmentConsent } } as any)}
-                        >
-                          <div>
-                            <strong style={{ color: '#8b6914' }}>Treatment Understanding</strong>
-                            <br />
-                            <span>I understand that Ayurvedic treatments are complementary and should not replace conventional medical care for serious conditions.</span>
-                          </div>
-                        </CustomCheckbox>
+                      <div className="flex items-start">
+                        <div className="flex items-center h-5">
+                          <input
+                            id="consent2"
+                            name="termsAccepted"
+                            type="checkbox"
+                            checked={formData.termsAccepted}
+                            onChange={handleChange}
+                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-slate-300 rounded cursor-pointer"
+                          />
+                        </div>
+                        <div className="ml-3 text-sm">
+                          <label htmlFor="consent2" className="font-medium text-slate-700 cursor-pointer">Terms & Conditions</label>
+                          <p className="text-slate-500 mt-0.5">I have read and agree to the Terms of Service and Privacy Policy.</p>
+                        </div>
                       </div>
-
-                      <div className="p-6 rounded-2xl" 
-                        style={{ 
-                          background: 'rgba(255, 248, 220, 0.4)', 
-                          border: '2px solid rgba(218, 165, 32, 0.2)' 
-                        }}
-                      >
-                        <CustomCheckbox
-                          checked={formData.communicationConsent}
-                          onChange={() => handleChange({ target: { name: 'communicationConsent', type: 'checkbox', checked: !formData.communicationConsent } } as any)}
-                        >
-                          <div>
-                            <strong style={{ color: '#8b6914' }}>Communication Preferences</strong>
-                            <br />
-                            <span>I agree to receive appointment reminders, health tips, and treatment updates via SMS, email, and in-app notifications. I can opt out anytime.</span>
-                          </div>
-                        </CustomCheckbox>
-                      </div>
-
-                      <div className="p-6 rounded-2xl" 
-                        style={{ 
-                          background: 'rgba(255, 248, 220, 0.4)', 
-                          border: '2px solid rgba(218, 165, 32, 0.2)' 
-                        }}
-                      >
-                        <CustomCheckbox
-                          checked={formData.termsAccepted}
-                          onChange={() => handleChange({ target: { name: 'termsAccepted', type: 'checkbox', checked: !formData.termsAccepted } } as any)}
-                        >
-                          <div>
-                            <strong style={{ color: '#8b6914' }}>Terms and Conditions *</strong>
-                            <br />
-                            <span>I have read and agree to the Terms of Service and Privacy Policy. I understand my rights regarding data protection and can withdraw consent anytime.</span>
-                          </div>
-                        </CustomCheckbox>
-                      </div>
-
-                      <div className="p-6 rounded-2xl" 
-                        style={{ 
-                          background: 'rgba(255, 248, 220, 0.4)', 
-                          border: '2px solid rgba(218, 165, 32, 0.2)' 
-                        }}
-                      >
-                        <CustomCheckbox
-                          checked={formData.consent}
-                          onChange={() => handleChange({ target: { name: 'consent', type: 'checkbox', checked: !formData.consent } } as any)}
-                        >
-                          <div>
-                            <strong style={{ color: '#8b6914' }}>General Consent</strong>
-                            <br />
-                            <span>I consent to the collection and processing of my health data for personalized Ayurvedic treatment purposes.</span>
-                          </div>
-                        </CustomCheckbox>
-                      </div>
-                    </div>
-
-                    <div className="mt-8 p-6 rounded-xl text-center" 
-                      style={{ 
-                        background: 'rgba(184, 134, 11, 0.1)', 
-                        border: '1px solid rgba(218, 165, 32, 0.3)' 
-                      }}
-                    >
-                      <p className="text-sm" style={{ color: '#8b6914' }}>
-                        Thank you for choosing SwastyaSync! Our Ayurvedic practitioners will review your profile and create a personalized treatment plan based on your unique constitution and health needs. You'll receive a Prakriti assessment next to determine your body type.
-                      </p>
                     </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Error Message */}
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-6 p-4 rounded-xl flex items-center gap-3"
-                style={{ 
-                  background: 'rgba(205, 133, 63, 0.1)',
-                  border: '2px solid rgba(205, 133, 63, 0.3)',
-                  color: '#a0522d'
-                }}
+                className="rounded-lg bg-red-50 p-4 border border-red-100"
               >
-                <span className="text-xl">⚠️</span>
-                <span className="font-medium">{error}</span>
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Action Required</h3>
+                    <div className="mt-1 text-sm text-red-700">
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
 
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8 pt-6" style={{ borderTop: '2px solid rgba(218, 165, 32, 0.2)' }}>
-              <button
-                type="button"
-                onClick={currentPage === 1 ? () => navigate(-1) : handlePrevious}
-                className="px-6 py-3 rounded-xl font-medium transition-all hover:scale-105 hover:-translate-y-0.5"
-                style={{
-                  background: 'rgba(139, 69, 19, 0.1)',
-                  color: '#8b6914',
-                  border: '2px solid rgba(218, 165, 32, 0.3)'
-                }}
-              >
-                {currentPage === 1 ? '← Back' : '← Previous'}
-              </button>
+            <div className="flex justify-between pt-6 border-t border-slate-100">
+              {currentPage > 1 ? (
+                <button
+                  type="button"
+                  onClick={handlePrevious}
+                  className="bg-white py-2.5 px-6 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
+                >
+                  Back
+                </button>
+              ) : (
+                <div /> // Spacer
+              )}
 
               {currentPage < totalPages ? (
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105 hover:-translate-y-0.5"
-                  style={{
-                    background: 'linear-gradient(135deg, #b8860b, #daa520, #ffd700)',
-                    color: '#2c1810',
-                    boxShadow: '0 4px 15px rgba(184, 134, 11, 0.4)'
-                  }}
+                  className="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-blue-200"
                 >
-                  Final Step →
+                  Continue
                 </button>
               ) : (
                 <button
                   type="submit"
-                  onClick={handleSubmit}
-                  disabled={loading || !formData.healthDataConsent || !formData.termsAccepted}
-                  className={`px-8 py-3 rounded-xl font-semibold transition-all ${
-                    loading || !formData.healthDataConsent || !formData.termsAccepted
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:scale-105 hover:-translate-y-0.5'
-                  }`}
-                  style={{
-                    background: loading || !formData.healthDataConsent || !formData.termsAccepted
-                      ? 'rgba(139, 69, 19, 0.3)'
-                      : 'linear-gradient(135deg, #228b22, #32cd32, #7cfc00)',
-                    color: loading || !formData.healthDataConsent || !formData.termsAccepted
-                      ? '#8b6914'
-                      : '#2c1810',
-                    boxShadow: loading || !formData.healthDataConsent || !formData.termsAccepted
-                      ? 'none'
-                      : '0 4px 15px rgba(124, 252, 0, 0.4)'
-                  }}
+                  disabled={loading}
+                  className={`inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-blue-200 ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md'}`}
                 >
-                  {loading ? 'Creating Profile...' : 'Complete Registration'}
+                  {loading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : 'Complete Registration'}
                 </button>
               )}
             </div>
-          </motion.div>
+          </form>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

@@ -20,6 +20,7 @@ import authRoutes from './routes/auth';
 import questionnaireRoutes from './routes/questionnaire';
 import chatRoutes from './routes/chat';
 import nutritionRoutes from './routes/nutrition';
+import adminRoutes from './routes/adminRoutes'; // Import admin routes
 import { authMiddleware } from './middlewares/authMiddleware';
 import { supabase } from './db/supabaseClient';
 
@@ -66,6 +67,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/questionnaire', questionnaireRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/nutrition', nutritionRoutes);
+app.use('/api/admin', adminRoutes); // Mount admin routes
 
 // Example protected route
 app.get('/me', authMiddleware, (req: Request, res: Response) => {
@@ -99,19 +101,19 @@ const io = new SocketIOServer(server, {
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  
+
   // Handle chat messages
   socket.on('chat-message', (data) => {
     console.log('Received chat message:', data);
     // Broadcast to all connected clients
     io.emit('chat-message', data);
   });
-  
+
   // Handle typing indicators
   socket.on('typing', (data) => {
     socket.broadcast.emit('typing', data);
   });
-  
+
   // Handle disconnect
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);

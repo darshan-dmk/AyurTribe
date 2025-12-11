@@ -1,5 +1,6 @@
 // src/components/AppointmentBooking.tsx
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../utils/supabase';
 
 interface Doctor {
   id: string;
@@ -26,6 +27,15 @@ interface PaymentDetails {
   time: string;
 }
 
+interface Treatment {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration_minutes: number;
+  category: string;
+}
+
 interface AppointmentBookingProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +48,8 @@ declare global {
   }
 }
 
+
+
 const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -48,10 +60,12 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [treatments, setTreatments] = useState<Treatment[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       loadDoctors();
+      loadTreatments();
       loadRazorpayScript();
     }
   }, [isOpen]);
@@ -105,6 +119,21 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
     ]);
   };
 
+  const loadTreatments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('treatments')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setTreatments(data || []);
+    } catch (err) {
+      console.error('Error loading treatments:', err);
+    }
+  };
+
   const loadTimeSlots = (date: string) => {
     // Mock time slots
     const slots = [
@@ -145,12 +174,16 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
     setStep(5);
   };
 
+  const selectedTreatment = treatments.find(t => t.id === consultationType);
+
   const initiatePayment = () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) return;
 
+    const amount = selectedTreatment ? selectedTreatment.price : selectedDoctor.consultationFee;
+
     const paymentData: PaymentDetails = {
       appointmentId: `APT${Date.now()}`,
-      amount: selectedDoctor.consultationFee,
+      amount: amount,
       doctorName: selectedDoctor.name,
       date: selectedDate,
       time: selectedTime
@@ -165,7 +198,7 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
       key: 'rzp_test_1234567890', // Replace with your Razorpay key
       amount: paymentData.amount * 100, // Amount in paise
       currency: 'INR',
-      name: 'Swastya Sync',
+      name: 'Ayur Tribe',
       description: `Consultation with ${paymentData.doctorName}`,
       order_id: paymentData.appointmentId,
       handler: function (response: any) {
@@ -180,7 +213,7 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
         color: '#4F46E5'
       },
       modal: {
-        ondismiss: function() {
+        ondismiss: function () {
           setLoading(false);
         }
       }
@@ -208,20 +241,7 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
     onClose();
   };
 
-  const getNextSevenDays = () => {
-    const dates = [];
-    const today = new Date();
-    for (let i = 1; i <= 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push({
-        date: date.toISOString().split('T')[0],
-        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        dayNumber: date.getDate()
-      });
-    }
-    return dates;
-  };
+
 
   if (!isOpen) return null;
 
@@ -244,17 +264,15 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
           <div className="flex items-center space-x-4 mb-8">
             {[1, 2, 3, 4, 5].map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step >= stepNumber 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-200 text-gray-600'
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors duration-300 ${step >= stepNumber
+                  ? 'bg-[#1a4731] text-white shadow-md' // Accent Sage
+                  : 'bg-gray-100 text-gray-400'
+                  }`}>
                   {stepNumber}
                 </div>
                 {stepNumber < 5 && (
-                  <div className={`w-16 h-1 mx-2 ${
-                    step > stepNumber ? 'bg-indigo-600' : 'bg-gray-200'
-                  }`} />
+                  <div className={`w-12 h-0.5 mx-2 transition-colors duration-300 ${step > stepNumber ? 'bg-[#1a4731]' : 'bg-gray-200'
+                    }`} />
                 )}
               </div>
             ))}
@@ -265,24 +283,24 @@ const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ isOpen, onClose
             <DoctorSelectionStep doctors={doctors} onSelect={handleDoctorSelect} />
           )}
           {step === 2 && (
-            <DateSelectionStep 
-              doctor={selectedDoctor} 
-              dates={getNextSevenDays()} 
-              onSelect={handleDateSelect} 
+            <DateSelectionStep
+              doctor={selectedDoctor}
+              onSelect={handleDateSelect}
             />
           )}
           {step === 3 && (
             <TimeSelectionStep timeSlots={timeSlots} onSelect={handleTimeSelect} />
           )}
           {step === 4 && (
-            <ConsultationTypeStep onSelect={handleConsultationTypeSelect} />
+            <ConsultationTypeStep treatments={treatments} onSelect={handleConsultationTypeSelect} />
           )}
           {step === 5 && (
-            <PaymentStep 
-              doctor={selectedDoctor} 
-              date={selectedDate} 
-              time={selectedTime} 
+            <PaymentStep
+              doctor={selectedDoctor}
+              date={selectedDate}
+              time={selectedTime}
               consultationType={consultationType}
+              selectedTreatment={selectedTreatment}
               onPay={initiatePayment}
               loading={loading}
             />
@@ -302,12 +320,12 @@ const DoctorSelectionStep = ({ doctors, onSelect }: { doctors: Doctor[]; onSelec
     <h3 className="text-xl font-bold text-gray-800 mb-6">Choose Your Doctor</h3>
     <div className="space-y-4 max-h-96 overflow-y-auto">
       {doctors.map((doctor) => (
-        <div key={doctor.id} 
-             className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
-             onClick={() => onSelect(doctor)}>
+        <div key={doctor.id}
+          className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
+          onClick={() => onSelect(doctor)}>
           <div className="flex items-center space-x-4">
-            <img 
-              src={doctor.image} 
+            <img
+              src={doctor.image}
               alt={doctor.name}
               className="w-16 h-16 rounded-full object-cover"
             />
@@ -334,77 +352,190 @@ const DoctorSelectionStep = ({ doctors, onSelect }: { doctors: Doctor[]; onSelec
   </div>
 );
 
-const DateSelectionStep = ({ doctor, dates, onSelect }: { doctor: Doctor | null; dates: any[]; onSelect: (date: string) => void }) => (
+const DateSelectionStep = ({ doctor, onSelect }: { doctor: Doctor | null; onSelect: (date: string) => void }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Calendar generation helpers
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const days = new Date(year, month + 1, 0).getDate();
+    return Array.from({ length: days }, (_, i) => {
+      const d = new Date(year, month, i + 1);
+      return {
+        date: d.toISOString().split('T')[0],
+        day: d.getDate(),
+        isToday: new Date().toDateString() === d.toDateString(),
+        isPast: d < new Date(new Date().setHours(0, 0, 0, 0))
+      };
+    });
+  };
+
+  const days = getDaysInMonth(currentDate);
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+
+  const nextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
+  const prevMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold text-[#2c1810] mb-2">Select Date</h3>
+      <p className="text-gray-600 mb-6 font-medium">Consultation with {doctor?.name}</p>
+
+      <div className="bg-white rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm">
+        {/* Calendar Header */}
+        <div className="flex justify-between items-center p-4 bg-[#f9fafb] border-b border-[#e5e7eb]">
+          <button onClick={prevMonth} className="p-2 hover:bg-gray-200 rounded-full text-[#4b5563]">
+            ←
+          </button>
+          <h4 className="font-bold text-[#1a4731]">
+            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h4>
+          <button onClick={nextMonth} className="p-2 hover:bg-gray-200 rounded-full text-[#4b5563]">
+            →
+          </button>
+        </div>
+
+        <div className="p-4">
+          {/* Weekday Headers */}
+          <div className="grid grid-cols-7 mb-2 text-center">
+            {weekDays.map(day => (
+              <div key={day} className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">{day}</div>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+              <div key={`empty-${i}`} />
+            ))}
+            {days.map((dayInfo) => (
+              <button
+                key={dayInfo.date}
+                onClick={() => !dayInfo.isPast && onSelect(dayInfo.date)}
+                disabled={dayInfo.isPast}
+                className={`
+                  h-10 w-10 mx-auto rounded-full flex items-center justify-center text-sm transition-all
+                  ${dayInfo.isToday ? 'border border-[#dda15e] font-bold' : ''}
+                  ${dayInfo.isPast
+                    ? 'text-gray-300 cursor-not-allowed'
+                    : 'text-[#374151] hover:bg-[#1a4731] hover:text-white font-medium'}
+                `}
+              >
+                {dayInfo.day}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center space-x-4 mt-4 text-xs text-gray-500 justify-center">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full border border-[#dda15e] mr-1"></div> Today
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-[#1a4731] mr-1"></div> Selected
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TimeSelectionStep = ({ timeSlots, onSelect }: { timeSlots: TimeSlot[]; onSelect: (time: string) => void }) => {
+  // Group slots for better UX
+  const morningSlots = timeSlots.filter(s => s.time.includes('AM'));
+  const afternoonSlots = timeSlots.filter(s => s.time.includes('PM'));
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold text-[#2c1810] mb-6">Select Time</h3>
+
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-semibold text-[#6b7280] uppercase tracking-wider mb-3">Morning</h4>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {morningSlots.map((slot) => (
+              <button
+                key={slot.time}
+                onClick={() => slot.available && onSelect(slot.time)}
+                disabled={!slot.available}
+                className={`
+                  py-2 px-1 rounded-lg text-sm font-medium transition-all text-center border
+                  ${slot.available
+                    ? 'border-[#e5e7eb] hover:border-[#dda15e] hover:bg-[#fffcf5] text-[#374151] hover:text-[#b07d34] shadow-sm'
+                    : 'border-transparent bg-gray-100 text-gray-400 cursor-not-allowed'}
+                `}
+              >
+                {slot.time}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold text-[#6b7280] uppercase tracking-wider mb-3">Afternoon</h4>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {afternoonSlots.map((slot) => (
+              <button
+                key={slot.time}
+                onClick={() => slot.available && onSelect(slot.time)}
+                disabled={!slot.available}
+                className={`
+                  py-2 px-1 rounded-lg text-sm font-medium transition-all text-center border
+                  ${slot.available
+                    ? 'border-[#e5e7eb] hover:border-[#dda15e] hover:bg-[#fffcf5] text-[#374151] hover:text-[#b07d34] shadow-sm'
+                    : 'border-transparent bg-gray-100 text-gray-400 cursor-not-allowed'}
+                `}
+              >
+                {slot.time}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ConsultationTypeStep = ({ treatments, onSelect }: { treatments: Treatment[]; onSelect: (typeId: string) => void }) => (
   <div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">Select Date</h3>
-    <p className="text-gray-600 mb-6">Consultation with {doctor?.name}</p>
-    
-    <div className="grid grid-cols-7 gap-4">
-      {dates.map((dateInfo) => (
-        <button
-          key={dateInfo.date}
-          onClick={() => onSelect(dateInfo.date)}
-          className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all text-center"
-        >
-          <div className="text-sm text-gray-600">{dateInfo.day}</div>
-          <div className="text-lg font-semibold text-gray-800">{dateInfo.dayNumber}</div>
-        </button>
-      ))}
+    <h3 className="text-xl font-bold text-gray-800 mb-6">Select Treatment & Consultation</h3>
+
+    <div className="space-y-4 max-h-96 overflow-y-auto">
+      {treatments.length === 0 ? (
+        <p className="text-gray-500 text-center py-4">No treatments available at the moment.</p>
+      ) : (
+        treatments.map((treatment) => (
+          <button
+            key={treatment.id}
+            onClick={() => onSelect(treatment.id)} // Passing ID for now, logic might need name if used elsewhere
+            className="w-full p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all text-left"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-800">{treatment.name}</h4>
+                <p className="text-gray-600 text-sm mt-1">{treatment.description}</p>
+                <span className="inline-block mt-2 text-xs font-medium px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                  {treatment.duration_minutes} mins
+                </span>
+              </div>
+              <div className="font-bold text-indigo-600">
+                ₹{treatment.price}
+              </div>
+            </div>
+          </button>
+        ))
+      )}
     </div>
   </div>
 );
 
-const TimeSelectionStep = ({ timeSlots, onSelect }: { timeSlots: TimeSlot[]; onSelect: (time: string) => void }) => (
-  <div>
-    <h3 className="text-xl font-bold text-gray-800 mb-6">Select Time</h3>
-    
-    <div className="grid grid-cols-4 gap-4">
-      {timeSlots.map((slot) => (
-        <button
-          key={slot.time}
-          onClick={() => slot.available && onSelect(slot.time)}
-          disabled={!slot.available}
-          className={`p-3 border rounded-lg text-center transition-all ${
-            slot.available 
-              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer'
-              : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          {slot.time}
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
-const ConsultationTypeStep = ({ onSelect }: { onSelect: (type: string) => void }) => (
-  <div>
-    <h3 className="text-xl font-bold text-gray-800 mb-6">Consultation Type</h3>
-    
-    <div className="space-y-4">
-      {[
-        { id: 'prakriti', title: 'Prakriti Analysis', description: 'Complete constitution assessment and personalized recommendations' },
-        { id: 'followup', title: 'Follow-up Consultation', description: 'Review progress and adjust treatment plan' },
-        { id: 'treatment', title: 'Treatment Planning', description: 'Detailed treatment consultation for specific health concerns' },
-        { id: 'diet', title: 'Diet & Lifestyle', description: 'Personalized diet and lifestyle recommendations' }
-      ].map((type) => (
-        <button
-          key={type.id}
-          onClick={() => onSelect(type.id)}
-          className="w-full p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all text-left"
-        >
-          <h4 className="text-lg font-semibold text-gray-800">{type.title}</h4>
-          <p className="text-gray-600 text-sm mt-1">{type.description}</p>
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
-const PaymentStep = ({ doctor, date, time, consultationType, onPay, loading }: any) => (
+const PaymentStep = ({ doctor, date, time, consultationType, onPay, loading, ...props }: any) => (
   <div>
     <h3 className="text-xl font-bold text-gray-800 mb-6">Confirm & Pay</h3>
-    
+
     <div className="bg-gray-50 rounded-lg p-6 mb-6">
       <h4 className="text-lg font-semibold text-gray-800 mb-4">Appointment Summary</h4>
       <div className="space-y-3">
@@ -422,12 +553,12 @@ const PaymentStep = ({ doctor, date, time, consultationType, onPay, loading }: a
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Type:</span>
-          <span className="font-medium capitalize">{consultationType}</span>
+          <span className="font-medium capitalize">{props.selectedTreatment?.name || consultationType}</span>
         </div>
         <hr />
         <div className="flex justify-between text-lg font-semibold">
           <span>Total Amount:</span>
-          <span className="text-indigo-600">₹{doctor?.consultationFee}</span>
+          <span className="text-indigo-600">₹{props.selectedTreatment?.price || doctor?.consultationFee}</span>
         </div>
       </div>
     </div>
@@ -435,11 +566,10 @@ const PaymentStep = ({ doctor, date, time, consultationType, onPay, loading }: a
     <button
       onClick={onPay}
       disabled={loading}
-      className={`w-full py-3 rounded-lg text-white font-medium transition-all ${
-        loading 
-          ? 'bg-gray-400 cursor-not-allowed' 
-          : 'bg-indigo-600 hover:bg-indigo-700'
-      }`}
+      className={`w-full py-3 rounded-lg text-white font-medium transition-all ${loading
+        ? 'bg-gray-400 cursor-not-allowed'
+        : 'bg-indigo-600 hover:bg-indigo-700'
+        }`}
     >
       {loading ? 'Processing...' : 'Pay Now'}
     </button>
@@ -459,7 +589,7 @@ const SuccessStep = ({ paymentDetails, onNewBooking }: any) => (
     </div>
     <h3 className="text-xl font-bold text-gray-800 mb-2">Appointment Booked Successfully!</h3>
     <p className="text-gray-600 mb-6">Your appointment has been confirmed and payment processed.</p>
-    
+
     <div className="bg-gray-50 rounded-lg p-6 mb-6">
       <h4 className="text-lg font-semibold text-gray-800 mb-4">Appointment Details</h4>
       <div className="space-y-2 text-left">

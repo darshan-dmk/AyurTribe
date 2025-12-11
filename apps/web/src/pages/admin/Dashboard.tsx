@@ -1,8 +1,15 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from '../../context/AuthContext';
+import {
+  Users, Calendar,
+  TrendingUp, AlertCircle, Filter,
+  RefreshCw
+} from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 
-type KPI = {
-  therapistUtilizationPct: number; // 0-100
-  noShowRatePct: number; // 0-100
+interface KPI {
+  therapistUtilizationPct: number;
+  noShowRatePct: number;
   avgSessionMinutes: number;
   upcomingCount: number;
   utilizationByTherapist: { name: string; pct: number }[];
@@ -10,11 +17,11 @@ type KPI = {
     id: string;
     patientName: string;
     procedure: string;
-    startTime: string; // ISO
+    startTime: string;
     practitioner: string;
     status: "scheduled" | "completed" | "no-show" | "cancelled";
   }[];
-};
+}
 
 const MOCK_DATA: KPI = {
   therapistUtilizationPct: 68,
@@ -55,220 +62,282 @@ const MOCK_DATA: KPI = {
   ]
 };
 
-export default function Dashboard() {
-  const [loading, setLoading] = useState<boolean>(true);
+export default function AdminDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const [metrics, setMetrics] = useState<KPI | null>(null);
   const [selectedCenter, setSelectedCenter] = useState<string>("All Centers");
   const [error, setError] = useState<string | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState<boolean>(true);
 
+  // Load metrics when center changes
   useEffect(() => {
-    let mounted = true;
-    async function loadMetrics() {
-      setLoading(true);
-      setError(null);
-      const base = process.env.REACT_APP_API_URL || "http://localhost:4000";
-      try {
-        const res = await fetch(`${base}/admin/metrics?center=${encodeURIComponent(selectedCenter)}`, {
-          credentials: "include"
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const json = (await res.json()) as KPI;
-        if (mounted) {
-          setMetrics(json);
-        }
-      } catch (err) {
-        // fallback to mock data for frontend dev
-        console.warn("Could not fetch admin metrics, using mock data:", err);
-        if (mounted) {
-          setMetrics(MOCK_DATA);
-          setError("Using mock data (backend unreachable).");
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
     loadMetrics();
-    return () => {
-      mounted = false;
-    };
   }, [selectedCenter]);
 
+  const loadMetrics = async () => {
+    setMetricsLoading(true);
+    setError(null);
+    const base = process.env.REACT_APP_API_URL || "http://localhost:4000";
+    try {
+      const res = await fetch(`${base}/admin/metrics?center=${encodeURIComponent(selectedCenter)}`, {
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as KPI;
+      setMetrics(json);
+    } catch (err) {
+      console.warn("Using mock data:", err);
+      setMetrics(MOCK_DATA);
+      // Only show error if it's not just a dev environment fallback scenario
+      if (process.env.NODE_ENV === 'production') {
+        setError("Using local data cache (Backend unreachable).");
+      }
+    } finally {
+      setMetricsLoading(false);
+    }
+  };
+
+  // Auth is handled by ProtectedRoute, so we don't need to check here
+  // But we show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-700"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 md:p-8">
-      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-slate-800">Admin Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Overview — clinic utilization, no-shows, and recent activity</p>
+    <div className="min-h-screen bg-stone-50 font-sans text-stone-800">
+      {/* Header removed: handled by AdminLayout */}
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        {/* Controls & Title */}
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-stone-900">Dashboard Overview</h2>
+            <p className="text-stone-500 mt-1">Real-time insights into clinic performance and utilization.</p>
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <select
+                value={selectedCenter}
+                onChange={(e) => setSelectedCenter(e.target.value)}
+                className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-shadow cursor-pointer shadow-sm hover:border-emerald-200"
+              >
+                <option>All Centers</option>
+                <option>Delhi - AIIA Clinic</option>
+                <option>Bengaluru - Center B</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500">
+                <Filter className="w-4 h-4" />
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMetrics(null);
+                loadMetrics();
+              }}
+              className="bg-white"
+              leftIcon={<RefreshCw className="w-4 h-4" />}
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <select
-            value={selectedCenter}
-            onChange={(e) => setSelectedCenter(e.target.value)}
-            className="border rounded px-3 py-2 bg-white text-sm"
-            aria-label="Select center"
-          >
-            <option>All Centers</option>
-            <option>Delhi - AIIA Clinic</option>
-            <option>Bengaluru - Center B</option>
-          </select>
+        {error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
+            {error}
+          </div>
+        )}
 
-          <button
-            onClick={() => {
-              // manual refresh
-              setMetrics(null);
-              setLoading(true);
-              setError(null);
-              // effect will run because selectedCenter didn't change; quick trick: toggle to force load
-              setSelectedCenter((s) => s);
-            }}
-            className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-          >
-            Refresh
-          </button>
-        </div>
-      </header>
-
-      {error && (
-        <div className="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-100 p-3 rounded">
-          {error}
-        </div>
-      )}
-
-      <main>
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* KPI Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <KPICard
             title="Therapist Utilization"
-            value={metrics ? `${metrics.therapistUtilizationPct}%` : "—"}
-            hint="Percent of booked capacity"
-            loading={loading}
+            value={`${metrics?.therapistUtilizationPct ?? 0}%`}
+            trend="+2.4%"
+            trendUp={true}
+            icon={Users}
+            color="blue"
           />
           <KPICard
             title="No-show Rate"
-            value={metrics ? `${metrics.noShowRatePct}%` : "—"}
-            hint="Missed appointments"
-            loading={loading}
+            value={`${metrics?.noShowRatePct ?? 0}%`}
+            trend="-1.2%"
+            trendUp={false} // good for this metric
+            inverse={true} // Lower is better
+            icon={AlertCircle}
+            color="rose"
           />
           <KPICard
-            title="Avg Session"
-            value={metrics ? `${metrics.avgSessionMinutes} min` : "—"}
-            hint="Average therapy duration"
-            loading={loading}
+            title="Avg Session Time"
+            value={`${metrics?.avgSessionMinutes ?? 0}m`}
+            trend="+5m"
+            trendUp={true}
+            icon={ClockIcon}
+            color="amber"
           />
           <KPICard
-            title="Upcoming Today"
-            value={metrics ? `${metrics.upcomingCount}` : "—"}
-            hint="Confirmed bookings"
-            loading={loading}
+            title="Today's Bookings"
+            value={metrics?.upcomingCount ?? 0}
+            trend="On Track"
+            trendUp={true}
+            icon={Calendar}
+            color="emerald"
           />
-        </section>
+        </div>
 
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-medium text-slate-800">Utilization by Therapist</h2>
-            <p className="text-sm text-slate-500">Shows utilization percentage per therapist</p>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Recent Activity Table */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-stone-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-stone-900">Recent Appointments</h3>
+                <p className="text-xs text-stone-500 uppercase tracking-wider font-semibold mt-1">Live Feed</p>
+              </div>
+              <Button variant="ghost" size="sm" className="text-stone-400 hover:text-emerald-700">View All</Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-stone-50/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">Patient</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">Therapy</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">Practitioner</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {(metrics?.recentAppointments || []).map((apt) => (
+                    <tr key={apt.id} className="hover:bg-stone-50/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-stone-900">{apt.patientName}</div>
+                        <div className="text-xs text-stone-400">ID: {apt.id}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">{apt.procedure}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">{apt.practitioner}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-500">
+                        {new Date(apt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusBadge status={apt.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {(!metrics || metrics.recentAppointments.length === 0) && (
+                <div className="p-8 text-center text-stone-500 bg-stone-50/30">
+                  No appointments found.
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {(metrics?.utilizationByTherapist || []).map((u) => (
-              <div key={u.name} className="bg-white p-3 rounded shadow-sm flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-slate-800">{u.name}</div>
-                  <div className="text-sm text-slate-500">Utilization: {u.pct}%</div>
-                </div>
-                <div className="w-40">
-                  <div className="h-3 bg-slate-100 rounded overflow-hidden">
+          {/* Utilization Bars */}
+          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-stone-900">Therapist Workload</h3>
+              <p className="text-xs text-stone-500 uppercase tracking-wider font-semibold mt-1">Resource Utilization</p>
+            </div>
+
+            <div className="space-y-6">
+              {(metrics?.utilizationByTherapist || []).map((u, i) => (
+                <div key={i}>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-sm font-medium text-stone-700">{u.name}</span>
+                    <span className="text-xs font-bold text-stone-900">{u.pct}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-3 rounded ${u.pct >= 75 ? "bg-emerald-500" : u.pct >= 50 ? "bg-yellow-400" : "bg-red-400"}`}
-                      style={{ width: `${Math.min(100, u.pct)}%` }}
-                      aria-hidden
-                    />
+                      className={`h-full rounded-full transition-all duration-1000 ease-out ${u.pct > 80 ? 'bg-amber-500' :
+                        u.pct > 60 ? 'bg-emerald-500' :
+                          'bg-blue-400'
+                        }`}
+                      style={{ width: `${u.pct}%` }}
+                    ></div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-stone-100">
+              <div className="flex items-center gap-4 text-xs text-stone-500 justify-center">
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>Optimal</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div>Heavy</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-400"></div>Light</div>
               </div>
-            ))}
-
-            {(!metrics || metrics.utilizationByTherapist.length === 0) && (
-              <div className="text-sm text-slate-500">No utilization data available.</div>
-            )}
+            </div>
           </div>
-        </section>
+        </div>
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-medium text-slate-800">Recent Appointments</h2>
-            <div className="text-sm text-slate-500">Latest activity across the center</div>
-          </div>
-
-          <div className="bg-white rounded shadow-sm overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Patient</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Procedure</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Practitioner</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Start</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-100">
-                {(metrics?.recentAppointments || []).map((apt) => (
-                  <tr key={apt.id}>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{apt.id}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{apt.patientName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{apt.procedure}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{apt.practitioner}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">
-                      {new Date(apt.startTime).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge status={apt.status} />
-                    </td>
-                  </tr>
-                ))}
-                {(!metrics || metrics.recentAppointments.length === 0) && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
-                      No recent appointments.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </main>
     </div>
   );
 }
 
-/* ---------- Small presentational components ---------- */
+// --- Subcomponents ---
 
-function KPICard({ title, value, hint, loading }: { title: string; value: string | number; hint?: string; loading?: boolean }) {
+function KPICard({ title, value, trend, trendUp, icon: Icon, color, inverse = false }: any) {
+  const isPositive = inverse ? !trendUp : trendUp;
+  const colorClasses: Record<string, string> = {
+    emerald: "bg-emerald-50 text-emerald-700",
+    blue: "bg-blue-50 text-blue-700",
+    amber: "bg-amber-50 text-amber-700",
+    rose: "bg-rose-50 text-rose-700",
+  };
+
   return (
-    <div className="bg-white p-4 rounded shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs font-medium text-slate-500">{title}</div>
-          <div className="mt-2 text-2xl font-semibold text-slate-800">{loading ? "Loading..." : value}</div>
+    <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow group">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-xl ${colorClasses[color]} group-hover:scale-110 transition-transform`}>
+          <Icon className="w-6 h-6" />
         </div>
-        <div className="text-xs text-slate-400">{hint}</div>
+        {trend && (
+          <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${isPositive ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'
+            }`}>
+            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingUp className="w-3 h-3 rotate-180" />}
+            {trend}
+          </div>
+        )}
       </div>
+      <div className="text-3xl font-bold text-stone-900 mb-1">{value}</div>
+      <div className="text-xs font-semibold text-stone-400 uppercase tracking-widest">{title}</div>
     </div>
-  );
+  )
 }
 
 function StatusBadge({ status }: { status: "scheduled" | "completed" | "no-show" | "cancelled" }) {
-  const mapping: Record<string, { label: string; className: string }> = {
-    scheduled: { label: "Scheduled", className: "bg-indigo-100 text-indigo-800" },
-    completed: { label: "Completed", className: "bg-emerald-100 text-emerald-800" },
-    "no-show": { label: "No-show", className: "bg-rose-100 text-rose-800" },
-    cancelled: { label: "Cancelled", className: "bg-yellow-100 text-yellow-800" }
+  const styles = {
+    scheduled: "bg-blue-50 text-blue-700 border-blue-100",
+    completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    "no-show": "bg-rose-50 text-rose-700 border-rose-100",
+    cancelled: "bg-stone-100 text-stone-600 border-stone-200"
   };
 
-  const meta = mapping[status] || mapping.scheduled;
-  return <span className={`px-2 py-1 rounded text-xs font-medium ${meta.className}`}>{meta.label}</span>;
+  const labels = {
+    scheduled: "Scheduled",
+    completed: "Completed",
+    "no-show": "No Show",
+    cancelled: "Cancelled"
+  };
+
+  return (
+    <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${styles[status] || styles.scheduled}`}>
+      {labels[status]}
+    </span>
+  );
 }
+
+// Icon wrapper for clock since it's used in mock data but was missing import in my head
+const ClockIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+);

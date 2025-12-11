@@ -1,40 +1,40 @@
 /* ==================== NUTRITION DASHBOARD - ADVANCED DESIGN ==================== */
 
 :root {
-  /* PRIMARY PALETTE */
-  --primary-gold: #ffd700;
-  --primary-dark: #3d2817;
-  --primary-light: #fffaf2;
+  /* AYURVEDIC PORTAL PALETTE */
+  --primary-gold: #E07A5F; /* Mapped to Terracotta for primary actions */
+  --primary-dark: #3D405B; /* Charcoal */
+  --primary-light: #FDFBF7; /* Sand */
   
   /* SECONDARY PALETTE */
-  --secondary-brown: #8b4513;
-  --secondary-tan: #d4a574;
-  --secondary-cream: #f5f1e8;
+  --secondary-brown: #5F6368; /* Muted Brown/Grey */
+  --secondary-tan: #F4F1DE; /* Light Sand */
+  --secondary-cream: #FFFFFF;
   
   /* TEXT COLORS */
-  --text-dark: #2c1810;
-  --text-medium: #5a3a2a;
-  --text-light: #8b6f47;
-  --text-white: #fffcf2;
+  --text-dark: #3D405B;
+  --text-medium: #5F6368;
+  --text-light: #8D99AE;
+  --text-white: #FFFFFF;
   
   /* ACCENT COLORS */
-  --accent-success: #22c55e;
-  --accent-danger: #ef4444;
-  --accent-info: #3b82f6;
-  --accent-warning: #f97316;
+  --accent-success: #81B29A; /* Sage */
+  --accent-danger: #E07A5F; /* Terracotta */
+  --accent-info: #3D405B; /* Charcoal */
+  --accent-warning: #F2CC8F; /* Soft Gold */
   
   /* DOSHA COLORS */
-  --dosha-vata: #a78bfa;
-  --dosha-pitta: #f87171;
-  --dosha-kapha: #22d3ee;
+  --dosha-vata: #3D405B;
+  --dosha-pitta: #E07A5F;
+  --dosha-kapha: #81B29A;
   
   /* RASA COLORS */
-  --rasa-madhura: #84cc16;
-  --rasa-amla: #fbbf24;
-  --rasa-lavana: #06b6d4;
-  --rasa-katu: #f43f5e;
-  --rasa-tikta: #8b5cf6;
-  --rasa-kashaya: #a16207;
+  --rasa-madhura: #81B29A;
+  --rasa-amla: #F2CC8F;
+  --rasa-lavana: #3D405B;
+  --rasa-katu: #E07A5F;
+  --rasa-tikta: #5F6368;
+  --rasa-kashaya: #8D99AE;
   
   /* SPACING */
   --spacing-xs: 0.25rem;
@@ -46,11 +46,11 @@
   --spacing-3xl: 3rem;
   
   /* SHADOWS */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 4px 6px rgba(139, 69, 19, 0.08);
-  --shadow-md: 0 10px 20px rgba(139, 69, 19, 0.12);
-  --shadow-lg: 0 20px 40px rgba(139, 69, 19, 0.15);
-  --shadow-xl: 0 30px 60px rgba(139, 69, 19, 0.2);
+  --shadow-xs: 0 1px 2px rgba(61, 64, 91, 0.05);
+  --shadow-sm: 0 4px 6px rgba(61, 64, 91, 0.08);
+  --shadow-md: 0 10px 20px rgba(61, 64, 91, 0.12);
+  --shadow-lg: 0 20px 40px rgba(61, 64, 91, 0.15);
+  --shadow-xl: 0 30px 60px rgba(61, 64, 91, 0.2);
   
   /* TRANSITIONS */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -91,7 +91,7 @@ html, body {
 /* ==================== PAGE BACKGROUND ==================== */
 .nutrition-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #3d2817 0%, #4a3420 25%, #5a4527 50%, #4a3420 75%, #3d2817 100%);
+  background: var(--primary-light);
   background-attachment: fixed;
   position: relative;
   overflow-x: hidden;
@@ -142,7 +142,7 @@ html, body {
 .header-title {
   font-size: 3.2rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffc107 100%);
+  background: linear-gradient(135deg, var(--accent-terracotta) 0%, var(--accent-charcoal) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -153,7 +153,7 @@ html, body {
 
 .header-subtitle {
   font-size: 1.15rem;
-  color: rgba(255, 252, 242, 0.95);
+  color: var(--text-medium);
   margin: 0;
   font-weight: 500;
   letter-spacing: 0.3px;
