@@ -1,52 +1,25 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import HttpApi from 'i18next-http-backend';
 
-// Import translation files
-import enCommon from './locales/en/common.json';
-import hiCommon from './locales/hi/common.json';
-import knCommon from "./locales/kn/common.json";
-import taCommon from "./locales/ta/common.json";
-import teCommon from "./locales/te/common.json";
-
-// Get saved language preference from localStorage
-const savedLanguage = localStorage.getItem('ayurtribe_lang') || 'en';
+// Initialize with default 'en' resources to prevent crash before loading dynamic
+const resources = {
+    en: {
+        translation: {}
+    }
+};
 
 i18n
-  .use(HttpApi)
-  .use(initReactI18next)
-  .init({
-    lng: savedLanguage,
-    fallbackLng: 'en',
-    debug: false,
-
-    interpolation: {
-      escapeValue: false, // React already escapes values
-    },
-
-    resources: {
-      en: {
-        common: enCommon,
-      },
-      hi: {
-        common: hiCommon,
-      },
-      kn:
-      {
-        common: knCommon
-
-      },
-      ta: { common: taCommon },
-      te: { common: teCommon }
-    },
-
-    ns: ['common'],
-    defaultNS: 'common',
-  });
-
-// Save language preference when it changes
-i18n.on('languageChanged', (lng) => {
-  localStorage.setItem('ayurtribe_lang', lng);
-});
+    .use(initReactI18next)
+    .init({
+        resources,
+        lng: localStorage.getItem('ayurtribe_language') || 'en', // default language
+        fallbackLng: 'en',
+        interpolation: {
+            escapeValue: false // react already safes from xss
+        },
+        react: {
+            useSuspense: false // Handle loading manually for smoother UX
+        }
+    });
 
 export default i18n;

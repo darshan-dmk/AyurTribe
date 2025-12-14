@@ -1,0 +1,181 @@
+﻿      <header className="bg-white/30 backdrop-blur-sm sticky top-0 z-40" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="header-brand">
+                <div className="brand-logo mr-3">
+                  <img src="/ayurtribelogo.png" alt="Ayur Tribe Logo" className="w-12 h-12 object-contain p-1 rounded-lg bg-[#1a4731]" />
+                </div>
+                <div>
+                  <div className="text-lg font-bold" style={{ color: 'var(--accent-sage)' }}>Ayur Tribe</div>
+                  <div className="text-xs card-sub">Personalized Ayurvedic Care</div>
+                </div>
+              </div>
+
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center ml-8 space-x-6">
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'dashboard'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                    : 'text-white/80 hover:text-white'
+                    }`}
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setActiveView('health')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'health'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                    : 'text-white/80 hover:text-white'
+                    }`}
+                >
+                  Health Profile
+                </button>
+                {prakritiScores && (
+                  <button
+                    onClick={() => setActiveView('visualization')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'visualization'
+                      ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                      : 'text-white/80 hover:text-white'
+                      }`}
+                  >
+                    Visualization
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveView('appointments')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'appointments'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                    : 'text-white/80 hover:text-white'
+                    }`}
+                >
+                  My Bookings
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden flex items-center">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-md text-white hover:bg-white/10"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
+
+            {/* Header Right: search, theme toggle, profile */}
+            <div className="hidden md:flex items-center space-x-3">
+              <input
+                placeholder="Search records, tips, doctors..."
+                className="search-input hidden sm:block"
+                aria-label="Search"
+                onFocus={(e) => e.currentTarget.setAttribute('placeholder', 'Search (e.g. ' + (prakritiScores?.dominant || 'vata') + ')')}
+                onBlur={(e) => e.currentTarget.setAttribute('placeholder', 'Search records, tips, doctors...')}
+              />
+
+              <button
+                onClick={() => setShowProfileManager(true)}
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                <div className="w-8 h-8" style={{
+                  background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 18px rgba(184,134,11,0.18)',
+                  color: '#2c1810',
+                  fontWeight: 700
+                }}>
+                  {user?.name?.[0] || user?.first_name?.[0] || 'U'}
+                </div>
+
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                style={{ color: 'rgba(255,255,255,0.85)' }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              className="md:hidden py-4 px-4 border-t border-white/10 bg-[#161b16]/95 backdrop-blur-md"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={() => { setActiveView('dashboard'); setMobileMenuOpen(false); }}
+                  className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'dashboard'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                    : 'text-white/80 hover:text-white'
+                    }`}
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => { setActiveView('health'); setMobileMenuOpen(false); }}
+                  className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'health'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                    : 'text-white/80 hover:text-white'
+                    }`}
+                >
+                  Health Profile
+                </button>
+                {prakritiScores && (
+                  <button
+                    onClick={() => { setActiveView('visualization'); setMobileMenuOpen(false); }}
+                    className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'visualization'
+                      ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                      : 'text-white/80 hover:text-white'
+                      }`}
+                  >
+                    Visualization
+                  </button>
+                )}
+                <button
+                  onClick={() => { setActiveView('appointments'); setMobileMenuOpen(false); }}
+                  className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'appointments'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
+                    : 'text-white/80 hover:text-white'
+                    }`}
+                >
+                  Appointments
+                </button>
+
+                <div className="pt-4 mt-4 border-t border-white/10">
+                  <button
+                    onClick={() => { setShowProfileManager(true); setMobileMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white"
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>

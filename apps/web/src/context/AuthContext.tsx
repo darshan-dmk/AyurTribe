@@ -53,16 +53,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
 
                 if (session) {
-                    console.log('[AuthProvider] Session found, fetching user profile...');
+                    console.log('[AuthProvider] Session found, initializing optimistic user...');
+
+                    // OPTIMISTIC UPDATE: Set user immediately from session metadata
+                    // This prevents the "refreshing/loading" spinner delay on page reloads/tab wakes
+                    const optimisticUser: User = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        first_name: session.user.user_metadata?.first_name || 'User',
+                        last_name: session.user.user_metadata?.last_name || '',
+                        role: (session.user.user_metadata?.role as any) || 'patient',
+                        is_active: true
+                    };
+
+                    if (mounted) {
+                        setUser(optimisticUser);
+                        setLoading(false); // Stop spinner immediately
+                    }
+
+                    console.log('[AuthProvider] Fetching full user profile...');
                     try {
-                        const currentUser = await authService.getCurrentUser();
-                        if (mounted) {
+                        const currentUser = await authService.getCurrentUser(session);
+                        if (mounted && currentUser) {
                             setUser(currentUser);
-                            console.log('[AuthProvider] User loaded:', currentUser?.id);
+                            console.log('[AuthProvider] Full user profile loaded:', currentUser.id);
                         }
                     } catch (error) {
                         console.error('[AuthProvider] Error fetching user profile:', error);
-                        if (mounted) setUser(null);
+                        // We already have the optimistic user, so we don't need to unset it unless critical
+                        // If DB fetch fails, we stick with session user (which is what fallback does anyway)
                     }
                 } else {
                     console.log('[AuthProvider] No session found.');

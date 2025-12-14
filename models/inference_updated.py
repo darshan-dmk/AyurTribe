@@ -48,6 +48,19 @@ def load_model() -> Tuple[Any, Dict[str, Any]]:
                     _metadata = json.load(f)
             else:
                 _metadata = {}
+            
+            # Also load feature_columns.json for mapping which contains question_mapping
+            mapping_path = os.path.join(model_dir, "feature_columns.json")
+            if os.path.exists(mapping_path):
+                try:
+                    with open(mapping_path, 'r') as f:
+                        mapping_data = json.load(f)
+                        # Merge mapping data into metadata (prioritize existing metadata)
+                        for k, v in mapping_data.items():
+                            if k not in _metadata:
+                                _metadata[k] = v
+                except Exception as e:
+                    print(f"Warning: Could not load mapping file: {e}")
         
         return _model, _metadata
     except Exception as e:
@@ -98,7 +111,15 @@ def predict_from_answers(answers: List[Dict[str, Any]]) -> Dict[str, Any]:
                 feature_vector = {}
                 
                 for answer in answers:
-                    feature_name = answer.get('trait', '').lower()
+                    raw_feature_name = answer.get('questionId') or answer.get('trait', '')
+                    raw_feature_name = str(raw_feature_name).lower()
+                    
+                    # Try to map question ID to feature column
+                    feature_name = raw_feature_name
+                    question_mapping = metadata.get('question_mapping', {})
+                    if raw_feature_name in question_mapping:
+                        feature_name = question_mapping[raw_feature_name]
+                    
                     if feature_name in model_features:
                         feature_vector[feature_name] = float(answer.get('weight', 0.5))
                 

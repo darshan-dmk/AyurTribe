@@ -5,11 +5,14 @@ import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageSelector } from '../../components/LanguageSelector';
 
 const Login = () => {
     const navigate = useNavigate();
     const routerLocation = useLocation();
     const { user: contextUser } = useAuth(); // Use global auth state
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -157,22 +160,22 @@ const Login = () => {
                         <img src="/ayurtribelogo.png" alt="Ayur Tribe" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-4xl font-serif mb-6 leading-tight">
-                        Welcome to <br />
+                        {t('Welcome to')} <br />
                         <span className="text-emerald-300">Ayur Tribe</span>
                     </h1>
                     <p className="text-emerald-100/80 text-lg leading-relaxed mb-8">
-                        The intelligent operating system for modern Ayurveda.
-                        Manage patients, therapies, and clinics with the precision of nature.
+                        {t('The intelligent operating system for modern Ayurveda.')}
+                        {t('Manage patients, therapies, and clinics with the precision of nature.')}
                     </p>
 
                     <div className="grid grid-cols-2 gap-6">
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
                             <div className="text-2xl font-bold mb-1 text-amber-100">15k+</div>
-                            <div className="text-sm text-emerald-200">Lives Touched</div>
+                            <div className="text-sm text-emerald-200">{t('Lives Touched')}</div>
                         </div>
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
                             <div className="text-2xl font-bold mb-1 text-amber-100">98%</div>
-                            <div className="text-sm text-emerald-200">Recovery Rate</div>
+                            <div className="text-sm text-emerald-200">{t('Recovery Rate')}</div>
                         </div>
                     </div>
                 </div>
@@ -180,21 +183,24 @@ const Login = () => {
 
             {/* Right Side - Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative">
+                <div className="absolute top-8 right-8 z-50">
+                    <LanguageSelector />
+                </div>
                 <Link to="/" className="absolute top-8 left-8 text-stone-500 hover:text-stone-800 transition-colors flex items-center gap-2 group">
                     <div className="p-2 rounded-full group-hover:bg-stone-100 transition-colors">
                         <ArrowRight className="w-5 h-5 rotate-180" />
                     </div>
-                    <span className="font-medium">Back to Home</span>
+                    <span className="font-medium">{t('Back to Home')}</span>
                 </Link>
                 <div className="w-full max-w-md space-y-8 mt-12 lg:mt-0">
                     <div className="text-center lg:text-left">
                         <h2 className="text-3xl font-bold text-stone-900 tracking-tight">
-                            {otpSent ? 'Enter Login Code' : 'Sign in to your account'}
+                            {otpSent ? t('Enter Login Code') : t('Sign in to your account')}
                         </h2>
                         <p className="mt-2 text-stone-600">
-                            New here?{' '}
+                            {t('New here?')}{' '}
                             <Link to="/auth/register" className="font-medium text-amber-600 hover:text-amber-700 transition-colors">
-                                Create an account
+                                {t('Create an account')}
                             </Link>
                         </p>
                     </div>
@@ -253,7 +259,7 @@ const Login = () => {
                             isLoading={loading}
                             rightIcon={!loading && <ArrowRight className="w-4 h-4 text-amber-300" />}
                         >
-                            {otpSent ? 'Verify Login Code' : (isMagicLink ? 'Send Login Code' : 'Sign In')}
+                            {otpSent ? t('Verify Login Code') : (isMagicLink ? t('Send Login Code') : t('Sign In'))}
                         </Button>
 
                         <div className="relative">
@@ -261,7 +267,7 @@ const Login = () => {
                                 <div className="w-full border-t border-stone-200"></div>
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-stone-500">Or continue with</span>
+                                <span className="px-2 bg-white text-stone-500">{t('Or continue with')}</span>
                             </div>
                         </div>
 
@@ -272,7 +278,7 @@ const Login = () => {
                                 className="w-full"
                                 onClick={() => setIsMagicLink(!isMagicLink)}
                             >
-                                {isMagicLink ? 'Use Password' : 'Login using OTP'}
+                                {isMagicLink ? t('Use Password') : t('Login using OTP')}
                             </Button>
                         ) : (
                             <Button
@@ -281,7 +287,7 @@ const Login = () => {
                                 className="w-full text-stone-500"
                                 onClick={() => setOtpSent(false)}
                             >
-                                Back to Login Methods
+                                {t('Back to Login Methods')}
                             </Button>
                         )}
                     </form>

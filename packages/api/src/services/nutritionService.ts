@@ -88,52 +88,52 @@ export const nutritionService = {
     searchTerm?: string;
   }): Promise<FoodItem[]> {
     let query = supabase.from('food_items').select('*');
-    
+
     if (filters?.food_group) {
       query = query.eq('food_group', filters.food_group);
     }
-    
+
     if (filters?.dosha_effect) {
       query = query.contains('dosha_effect', [filters.dosha_effect]);
     }
-    
+
     if (filters?.rasa) {
       query = query.contains('rasa', [filters.rasa]);
     }
-    
+
     if (filters?.searchTerm) {
       query = query.or(`name_en.ilike.%${filters.searchTerm}%,name_sanskrit.ilike.%${filters.searchTerm}%`);
     }
-    
+
     const { data, error } = await query.limit(100);
-    
+
     if (error) {
       throw new Error(`Failed to fetch food items: ${error.message}`);
     }
-    
+
     return data as FoodItem[];
   },
 
   // Search foods by dosha effect
   async searchFoodsByDosha(dosha: string, foodGroup?: string): Promise<FoodItem[]> {
     let query = supabase.from('food_items').select('*');
-    
+
     // Filter by dosha effect (e.g., "Reduces Vata", "Balances Pitta")
     if (dosha) {
       query = query.contains('dosha_effect', [dosha]);
     }
-    
+
     // Optional filter by food group
     if (foodGroup && foodGroup !== 'All Food Groups') {
       query = query.eq('food_group', foodGroup);
     }
-    
+
     const { data, error } = await query.limit(50);
-    
+
     if (error) {
       throw new Error(`Failed to search foods by dosha: ${error.message}`);
     }
-    
+
     return data as FoodItem[];
   },
 
@@ -144,34 +144,86 @@ export const nutritionService = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) {
       if (error.code === 'PGRST116') {
         return null; // Not found
       }
       throw new Error(`Failed to fetch food item: ${error.message}`);
     }
-    
+
     return data as FoodItem;
   },
 
-  // Generate a general diet plan based on Prakriti assessment
+  // Generate a general diet plan based on Prakriti assessment (DYNAMIC)
   async generateGeneralDietPlan(prakritiType: string, userId: string): Promise<DietRecommendation> {
-    // This would typically call an ML model or use rule-based logic
-    // For now, we'll use the existing logic from prakritiService
-    
-    const recommendations = this.getPrakritiBasedRecommendations(prakritiType);
-    
+    const prakriti = (prakritiType || 'vata').toLowerCase();
+    const capitalizedPrakriti = prakriti.charAt(0).toUpperCase() + prakriti.slice(1);
+
+    // 1. Fetch foods that BALANCE the specific Dosha
+    // We look for "Balances Vata" etc. in the dosha_effect array
+    const { data: balancingFoods, error } = await supabase
+      .from('food_items')
+      .select('*')
+      .contains('dosha_effect', [`Balances ${capitalizedPrakriti}`]); // Queries array column
+
+    if (error) {
+      console.error('Error fetching balancing foods:', error);
+      throw new Error(`Failed to generate diet plan: ${error.message}`);
+    }
+
+    // 2. Group foods by category for the "Foods to Favor" section
+    const foodsToFavor = {
+      grains: balancingFoods?.filter(f => f.food_group === 'Grain').map(f => f.name_en) || [],
+      vegetables: balancingFoods?.filter(f => f.food_group === 'Vegetable').map(f => f.name_en) || [],
+      fruits: balancingFoods?.filter(f => f.food_group === 'Fruit').map(f => f.name_en) || [],
+      proteins: balancingFoods?.filter(f => ['Legume', 'Meat', 'Fish', 'Dairy', 'Nut'].includes(f.food_group)).map(f => f.name_en) || [],
+      spices: balancingFoods?.filter(f => f.food_group === 'Spice').map(f => f.name_en) || [],
+      oils: balancingFoods?.filter(f => f.food_group === 'Oil').map(f => f.name_en) || []
+    };
+
+    // 3. Generate Guidelines based on Prakriti (Standard Ayurvedic Principles)
+    // While foods are dynamic, these general rules are constant for each dosha
+    const guidelines = {
+      vata: [
+        'Favor warm, cooked, and unctuous (oily) foods.',
+        'Avoid cold, dry, and raw foods (like salads).',
+        'Eat at regular times to stabilize energy.',
+        'Use warming spices like ginger and cumin.'
+      ],
+      pitta: [
+        'Favor cool, refreshing, and slightly dry foods.',
+        'Avoid hot (spicy), salty, and sour foods.',
+        'Do not skip meals, especially lunch.',
+        'Stay hydrated with cool water or coconut water.'
+      ],
+      kapha: [
+        'Favor warm, light, and dry foods.',
+        'Avoid heavy, oily, and sweet foods.',
+        'Focus on pungent, bitter, and astringent tastes.',
+        'Engage in regular exercise before eating.'
+      ]
+    };
+
+    const mealTiming = {
+      vata: { breakfast: '7:00 - 8:00 AM', lunch: '12:00 - 1:00 PM', dinner: '6:00 - 7:00 PM', notes: 'Warm, cooked meals are best.' },
+      pitta: { breakfast: '7:00 - 8:30 AM', lunch: '12:00 - 1:30 PM (Main Meal)', dinner: '6:30 - 7:30 PM', notes: 'Eat when hungry, do not delay meals.' },
+      kapha: { breakfast: 'Light or Skip', lunch: '12:00 - 1:00 PM', dinner: '6:00 - 7:00 PM (Light)', notes: 'Avoid snacking between meals.' }
+    };
+
     const dietPlan: DietRecommendation = {
       user_id: userId,
       prakriti_type: prakritiType,
-      recommendations: recommendations.general_guidelines,
-      foods_to_favor: recommendations.foods_to_favor,
-      foods_to_avoid: recommendations.foods_to_avoid,
-      meal_timing: recommendations.meal_timing,
+      recommendations: guidelines[prakriti as keyof typeof guidelines] || guidelines.vata,
+      foods_to_favor: foodsToFavor,
+      foods_to_avoid: {
+        general: [`Foods that aggravate ${capitalizedPrakriti}`],
+        specific: ['Consult the full food database for specific contraindications']
+      },
+      meal_timing: mealTiming[prakriti as keyof typeof mealTiming] || mealTiming.vata,
       recommendation_type: 'general'
     };
-    
+
     return dietPlan;
   },
 
@@ -195,11 +247,11 @@ export const nutritionService = {
       }])
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Failed to save diet recommendation: ${error.message}`);
     }
-    
+
     return data as DietRecommendation;
   },
 
@@ -210,11 +262,11 @@ export const nutritionService = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       throw new Error(`Failed to fetch user diet recommendations: ${error.message}`);
     }
-    
+
     return data as DietRecommendation[];
   },
 
@@ -233,11 +285,11 @@ export const nutritionService = {
       }])
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Failed to log meal: ${error.message}`);
     }
-    
+
     return data as MealLog;
   },
 
@@ -249,11 +301,11 @@ export const nutritionService = {
       .eq('user_id', userId)
       .order('logged_at', { ascending: false })
       .limit(limit);
-    
+
     if (error) {
       throw new Error(`Failed to fetch user meal logs: ${error.message}`);
     }
-    
+
     return data as MealLog[];
   },
 
@@ -272,11 +324,11 @@ export const nutritionService = {
       }])
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Failed to submit nutrition feedback: ${error.message}`);
     }
-    
+
     return data as NutritionFeedback;
   },
 
@@ -298,11 +350,11 @@ export const nutritionService = {
       }])
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Failed to save dietitian recommendation: ${error.message}`);
     }
-    
+
     return data as DietitianRecommendation;
   },
 
@@ -316,11 +368,11 @@ export const nutritionService = {
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       throw new Error(`Failed to fetch user dietitian recommendations: ${error.message}`);
     }
-    
+
     return data as DietitianRecommendation[];
   },
 

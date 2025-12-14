@@ -8,15 +8,15 @@ import fetch from 'node-fetch';
 // Always load .env explicitly
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Config values
-const supabaseUrl = "https://yrgmfzkfrezfminbdfnz.supabase.co";
-const supabaseServiceKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyZ21memtmcmV6Zm1pbmJkZm56Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzcwMjMxNiwiZXhwIjoyMDczMjc4MzE2fQ.HrEtLWAy8kz5pkI722K-tiL8Ckp-DHIXcjVzWfpDBuY";
+const supabaseUrl = process.env.SUPABASE_URL || "https://yrgmfzkfrezfminbdfnz.supabase.co";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyZ21memtmcmV6Zm1pbmJkZm56Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzcwMjMxNiwiZXhwIjoyMDczMjc4MzE2fQ.HrEtLWAy8kz5pkI722K-tiL8Ckp-DHIXcjVzWfpDBuY";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyZ21memtmcmV6Zm1pbmJkZm56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3MDIzMTYsImV4cCI6MjA3MzI3ODMxNn0.zZyxovDpKEL7FeyYvQZucKd_JwIFkwiN6Y1q5CClvwo";
 
 if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('❌ Missing required environment variables:');
-    if (!supabaseUrl) console.error('   - SUPABASE_URL');
-    if (!supabaseServiceKey) console.error('   - SUPABASE_SERVICE_ROLE_KEY');
-    process.exit(1);
+  console.error('❌ Missing required environment variables:');
+  if (!supabaseUrl) console.error('   - SUPABASE_URL');
+  if (!supabaseServiceKey) console.error('   - SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
 }
 
 function mask(s: string | undefined, leave = 6) {
@@ -33,21 +33,21 @@ console.log('DEBUG: process.env.SUPABASE_SERVICE_ROLE_KEY present:', !!process.e
 
 // Configure fetch with node-fetch implementation
 const clientConfig: any = {
-    auth: { 
-        autoRefreshToken: false, 
-        persistSession: false 
-    },
-    global: { 
-        fetch: fetch as any,
-        headers: { 'Content-Type': 'application/json' }
-    }
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  },
+  global: {
+    fetch: fetch as any,
+    headers: { 'Content-Type': 'application/json' }
+  }
 };
 
 // Create Supabase client
 export const supabase: SupabaseClient = createClient(
-    supabaseUrl,
-    supabaseServiceKey,
-    clientConfig
+  supabaseUrl,
+  supabaseServiceKey,
+  clientConfig
 );
 
 // Test connection
@@ -100,4 +100,4 @@ export const supabase: SupabaseClient = createClient(
   }
 })();
 export const supabaseService = createClient(supabaseUrl, supabaseServiceKey, clientConfig); // service role
-export const supabaseAnon = createClient(supabaseUrl, process.env.SUPABASE_ANON_KEY || '', clientConfig); // anon
+export const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, clientConfig); // anon

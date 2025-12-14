@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageSelector } from '../../components/LanguageSelector';
 import {
   Phone, Leaf, Flame, Droplet, Calendar, Users, Shield,
   ArrowRight, CheckCircle, Activity, Heart, Clock
@@ -10,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 const Intro: React.FC = () => {
   const navigate = useNavigate();
   // ... (keep existing hooks)
-  const { t, i18n } = useTranslation("common");
+  const { t } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -20,13 +21,6 @@ const Intro: React.FC = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const handleLanguageChange = (lang: string) => {
-    i18n.changeLanguage(lang).catch(() => { });
-    try {
-      localStorage.setItem("ayurtribe_lang", lang);
-    } catch { }
-  };
 
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-800 selection:bg-emerald-100 dark:selection:bg-emerald-900">
@@ -45,32 +39,17 @@ const Intro: React.FC = () => {
             </div>
             <div>
               <div className="text-xl font-bold tracking-tight text-stone-900 leading-none">
-                {t("common.appName", "Ayur Tribe")}
+                {t("Ayur Tribe")}
               </div>
               <div className="text-xs font-medium text-emerald-700 tracking-wide uppercase mt-0.5">
-                {t("hero.subtitle", "Ayurveda & Wellness")}
+                {t("Ayurveda & Wellness")}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="relative hidden md:block">
-              <select
-                id="lang"
-                value={i18n.language || "en"}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="appearance-none pl-4 pr-8 py-2 bg-stone-100 hover:bg-stone-200 border-none rounded-full text-sm font-medium text-stone-700 cursor-pointer focus:ring-2 focus:ring-emerald-500 transition-colors outline-none"
-                aria-label={t("common.appName")}
-              >
-                <option value="en">English</option>
-                <option value="hi">हिन्दी</option>
-                <option value="kn">ಕನ್ನಡ</option>
-                <option value="ta">தமிழ்</option>
-                <option value="te">తెలుగు</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
+              <LanguageSelector />
             </div>
 
             <Button
@@ -78,7 +57,7 @@ const Intro: React.FC = () => {
               onClick={() => navigate("/auth/login")}
               className="rounded-full"
             >
-              Log In
+              {t('Log In')}
             </Button>
 
             <Button
@@ -86,7 +65,7 @@ const Intro: React.FC = () => {
               onClick={() => navigate("/auth/register")}
               className="hidden sm:inline-flex rounded-full shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
-              Get Started
+              {t('Get Started')}
             </Button>
           </div>
         </div>
@@ -106,18 +85,18 @@ const Intro: React.FC = () => {
               <div className="space-y-8 animate-fade-in-up">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/50 border border-emerald-200 text-emerald-800 text-xs font-semibold uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                  New Generational Health
+                  {t('New Generational Health')}
                 </div>
 
                 <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-stone-900 leading-[1.1]">
-                  Holistic Health, <br />
+                  {t('Holistic Health,')} <br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-700">
-                    Defined by Nature.
+                    {t('Defined by Nature.')}
                   </span>
                 </h1>
 
                 <p className="text-xl text-stone-600 leading-relaxed max-w-lg">
-                  {t("hero.description", "Experience the perfect synergy of ancient Ayurvedic wisdom and modern medical science. Personalized care, simplified.")}
+                  {t("Experience the perfect synergy of ancient Ayurvedic wisdom and modern medical science. Personalized care, simplified.")}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -129,7 +108,7 @@ const Intro: React.FC = () => {
                       className="relative w-full sm:w-auto justify-center shadow-lg"
                       rightIcon={<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
                     >
-                      {t("cta.register", "Start Your Journey")}
+                      {t("Start Your Journey")}
                     </Button>
                   </div>
 
@@ -139,18 +118,18 @@ const Intro: React.FC = () => {
                     onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                     className="w-full sm:w-auto"
                   >
-                    Learn More
+                    {t('Learn More')}
                   </Button>
                 </div>
 
                 <div className="flex items-center gap-6 pt-4 text-sm font-medium text-stone-500">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    <span>Free Prakriti Analysis</span>
+                    <span>{t('Free Prakriti Analysis')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    <span>Expert Guidance</span>
+                    <span>{t('Expert Guidance')}</span>
                   </div>
                 </div>
               </div>
@@ -164,8 +143,8 @@ const Intro: React.FC = () => {
 
                   <div className="relative z-10 space-y-6">
                     <div className="space-y-2 text-center pb-4 border-b border-stone-100">
-                      <h3 className="text-2xl font-bold text-stone-900">{t("phoneEntry.title", "Get Started")}</h3>
-                      <p className="text-stone-500">{t("phoneEntry.subtitle", "Join thousands on their journey")}</p>
+                      <h3 className="text-2xl font-bold text-stone-900">{t("Get Started")}</h3>
+                      <p className="text-stone-500">{t("Join thousands on their journey")}</p>
                     </div>
 
                     <div className="space-y-4">
@@ -177,7 +156,7 @@ const Intro: React.FC = () => {
                         onClick={() => navigate("/auth/register")}
                         rightIcon={<ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />}
                       >
-                        Create Account
+                        {t('Create Account')}
                       </Button>
 
                       <Button
@@ -186,13 +165,13 @@ const Intro: React.FC = () => {
                         className="w-full justify-center bg-white hover:bg-stone-50"
                         onClick={() => navigate("/auth/login")}
                       >
-                        Sign In
+                        {t('Sign In')}
                       </Button>
                     </div>
 
                     <div className="text-center pt-2">
                       <p className="text-xs text-stone-400">
-                        By continuing, you agree to our <a href="#" className="underline hover:text-emerald-700">Terms</a> & <a href="#" className="underline hover:text-emerald-700">Privacy Policy</a>
+                        {t('By continuing, you agree to our')} <a href="#" className="underline hover:text-emerald-700">{t('Terms')}</a> & <a href="#" className="underline hover:text-emerald-700">{t('Privacy Policy')}</a>
                       </p>
                     </div>
                   </div>
@@ -210,8 +189,8 @@ const Intro: React.FC = () => {
                 <div className="absolute -left-8 bottom-32 bg-white p-4 rounded-2xl shadow-xl border border-stone-100 flex items-center gap-3 animate-float delay-300 hidden sm:flex">
                   <div className="bg-emerald-100 p-2 rounded-full text-emerald-700"><Leaf className="w-5 h-5" /></div>
                   <div>
-                    <div className="text-xs text-stone-500 font-medium">Wellness Score</div>
-                    <div className="text-sm font-bold text-stone-800">Excellent</div>
+                    <div className="text-xs text-stone-500 font-medium">{t('Wellness Score')}</div>
+                    <div className="text-sm font-bold text-stone-800">{t('Excellent')}</div>
                   </div>
                 </div>
               </div>
@@ -223,47 +202,47 @@ const Intro: React.FC = () => {
         <section id="features" className="py-24 bg-white relative">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">Complete Health Management</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">{t('Complete Health Management')}</h2>
               <p className="text-lg text-stone-600">
-                Everything you need to manage your health journey, from simplified scheduling to deep Ayurvedic insights.
+                {t('Everything you need to manage your health journey, from simplified scheduling to deep Ayurvedic insights.')}
               </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
               <FeatureCard
                 icon={Users}
-                title={t("features.prakriti", "Prakriti Analysis")}
-                desc="Discover your unique body constitution through our advanced AI-driven questionnaire."
+                title={t("Prakriti Analysis")}
+                desc={t("Discover your unique body constitution through our advanced AI-driven questionnaire.")}
                 color="bg-amber-50 text-amber-700"
               />
               <FeatureCard
                 icon={Calendar}
-                title={t("features.scheduling", "Smart Scheduling")}
-                desc="Book appointments seamlessly with top practitioners based on your availability."
+                title={t("Smart Scheduling")}
+                desc={t("Book appointments seamlessly with top practitioners based on your availability.")}
                 color="bg-emerald-50 text-emerald-700"
               />
               <FeatureCard
                 icon={Shield}
-                title="Secure & Private"
-                desc="Your health data is encrypted and protected with enterprise-grade security."
+                title={t("Secure & Private")}
+                desc={t("Your health data is encrypted and protected with enterprise-grade security.")}
                 color="bg-blue-50 text-blue-700"
               />
               <FeatureCard
                 icon={Activity}
-                title="Health Tracking"
-                desc="Monitor your vitals, sleep, and nutrition progress over time with intuitive charts."
+                title={t("Health Tracking")}
+                desc={t("Monitor your vitals, sleep, and nutrition progress over time with intuitive charts.")}
                 color="bg-purple-50 text-purple-700"
               />
               <FeatureCard
                 icon={Heart}
-                title="Personalized Care"
-                desc="Get diet and lifestyle recommendations tailored specifically to your Prakriti."
+                title={t("Personalized Care")}
+                desc={t("Get diet and lifestyle recommendations tailored specifically to your Prakriti.")}
                 color="bg-rose-50 text-rose-700"
               />
               <FeatureCard
                 icon={Clock}
-                title="24/7 Support"
-                desc="Access automated support and resources whenever you need them, day or night."
+                title={t("24/7 Support")}
+                desc={t("Access automated support and resources whenever you need them, day or night.")}
                 color="bg-teal-50 text-teal-700"
               />
             </div>
@@ -277,23 +256,23 @@ const Intro: React.FC = () => {
           <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-amber-50">Unlock Your Ayurvedic Profile</h2>
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-amber-50">{t('Unlock Your Ayurvedic Profile')}</h2>
                 <p className="text-emerald-100 text-lg mb-8 leading-relaxed">
-                  Understanding your Prakriti (Dosha) is the key to balanced health. Our platform analyzes your physical and mental traits to provide a comprehensive profile.
+                  {t('Understanding your Prakriti (Dosha) is the key to balanced health. Our platform analyzes your physical and mental traits to provide a comprehensive profile.')}
                 </p>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 p-4 bg-emerald-800/50 rounded-xl border border-emerald-700/50 hover:bg-emerald-800 transition-colors">
                     <div className="bg-white/10 p-3 rounded-lg"><Leaf className="w-6 h-6 text-emerald-300" /></div>
                     <div>
-                      <h4 className="font-semibold text-lg text-amber-100">Personalized Diet Plans</h4>
-                      <p className="text-sm text-emerald-200">Foods that balance your specific Dosha.</p>
+                      <h4 className="font-semibold text-lg text-amber-100">{t('Personalized Diet Plans')}</h4>
+                      <p className="text-sm text-emerald-200">{t('Foods that balance your specific Dosha.')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-emerald-800/50 rounded-xl border border-emerald-700/50 hover:bg-emerald-800 transition-colors">
                     <div className="bg-white/10 p-3 rounded-lg"><Activity className="w-6 h-6 text-emerald-300" /></div>
                     <div>
-                      <h4 className="font-semibold text-lg text-amber-100">Lifestyle Adjustments</h4>
-                      <p className="text-sm text-emerald-200">Routines synchronized with your body clock.</p>
+                      <h4 className="font-semibold text-lg text-amber-100">{t('Lifestyle Adjustments')}</h4>
+                      <p className="text-sm text-emerald-200">{t('Routines synchronized with your body clock.')}</p>
                     </div>
                   </div>
                 </div>
@@ -302,20 +281,20 @@ const Intro: React.FC = () => {
               <div className="grid gap-5">
                 <PrakritiCard
                   icon={Leaf}
-                  name={t("prakriti.vata.name", "Vata")}
-                  desc="Air & Ether. Characteristics of movement, creativity, and energy."
+                  name={t("Vata")}
+                  desc={t("Air & Ether. Characteristics of movement, creativity, and energy.")}
                   theme="text-sky-300 bg-sky-900/30 border-sky-800"
                 />
                 <PrakritiCard
                   icon={Flame}
-                  name={t("prakriti.pitta.name", "Pitta")}
-                  desc="Fire's intensity. Associated with metabolism, digestion, and focus."
+                  name={t("Pitta")}
+                  desc={t("Fire's intensity. Associated with metabolism, digestion, and focus.")}
                   theme="text-amber-300 bg-amber-900/40 border-amber-700"
                 />
                 <PrakritiCard
                   icon={Droplet}
-                  name={t("prakriti.kapha.name", "Kapha")}
-                  desc="Earth & Water. Embodying strength, stability, and endurance."
+                  name={t("Kapha")}
+                  desc={t("Earth & Water. Embodying strength, stability, and endurance.")}
                   theme="text-emerald-300 bg-emerald-950/40 border-emerald-800"
                 />
               </div>
@@ -326,16 +305,16 @@ const Intro: React.FC = () => {
         {/* CTA Section */}
         <section className="py-20 bg-stone-50">
           <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-stone-900 mb-6">Ready to Transform Your Health?</h2>
+            <h2 className="text-3xl font-bold text-stone-900 mb-6">{t('Ready to Transform Your Health?')}</h2>
             <p className="text-lg text-stone-600 mb-10">
-              Join thousands of others who are rediscovering wellness through the power of Ayurveda.
+              {t('Join thousands of others who are rediscovering wellness through the power of Ayurveda.')}
             </p>
             <Button
               size="lg"
               onClick={() => navigate("/auth/register")}
               className="px-10 py-4 rounded-full font-bold text-lg shadow-xl shadow-emerald-200 hover:shadow-2xl hover:-translate-y-1 transition-all"
             >
-              Get Started for Free
+              {t('Get Started for Free')}
             </Button>
           </div>
         </section>
@@ -389,10 +368,10 @@ const Intro: React.FC = () => {
             </div>
             <div className="flex gap-6">
               <button onClick={() => navigate("/auth/login")} className="text-sm font-medium text-stone-500 hover:text-emerald-700 transition-colors">
-                Practitioner Login
+                {t('Practitioner Login')}
               </button>
               <button onClick={() => navigate("/auth/login")} className="text-sm font-medium text-stone-500 hover:text-emerald-700 transition-colors">
-                Admin Login
+                {t('Admin Login')}
               </button>
             </div>
           </div>

@@ -24,12 +24,12 @@ router.use(authMiddleware);
 router.get('/latest', asyncHandler(async (req: Request, res: Response) => {
   console.log('GET /latest - Headers:', req.headers);
   console.log('GET /latest - User:', req.user);
-  
+
   const userId = req.user?.id;
   if (!userId) {
     return res.status(401).json({ error: 'User not authenticated' });
   }
-  
+
   console.log(`Fetching latest questionnaire for user: ${userId}`);
 
   try {
@@ -57,7 +57,7 @@ router.get('/latest', asyncHandler(async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching questionnaire results:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to fetch questionnaire results',
       details: error.message || 'Unknown error',
       code: error.code
@@ -75,8 +75,8 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response, next: Ne
 
     // Validate input
     if (!userId || !answers || !Array.isArray(answers)) {
-      return res.status(400).json({ 
-        error: 'User ID and answers array are required' 
+      return res.status(400).json({
+        error: 'User ID and answers array are required'
       });
     }
 
@@ -94,47 +94,67 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response, next: Ne
       // Format answers for ML service
       // Format answers for ML service
       const mlAnswers = answers.reduce((acc: any[], a: any) => {
-        if (a.trait) {
+        if (a.trait || a.questionId) {
           acc.push({
+            questionId: a.questionId,
             trait: a.trait,
-            weight: parseFloat(a.weight) || 1
+            weight: parseFloat(a.weight) || 0.5,
+            value: a.value
           });
         }
         return acc;
       }, []);
 
       console.log(`🤖 Calling ML service at ${ML_SERVICE_URL}/predict`);
-      const mlResponse = await fetch(`${ML_SERVICE_URL}/predict`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          answers: mlAnswers
-        }),
-      });
 
-      if (mlResponse.ok) {
-        mlServiceResponse = await mlResponse.json();
-        console.log(`📡 ML response received:`, JSON.stringify(mlServiceResponse, null, 2));
-        
-        // Extract ML prediction from response
-        if (mlServiceResponse?.prakriti?.ml_prediction) {
-          mlPrediction = mlServiceResponse.prakriti.ml_prediction;
+      // Create an AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      try {
+        const mlResponse = await fetch(`${ML_SERVICE_URL}/predict`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            answers: mlAnswers
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (mlResponse.ok) {
+          mlServiceResponse = await mlResponse.json();
+          console.log(`📡 ML response received:`, JSON.stringify(mlServiceResponse, null, 2));
+
+          // Extract ML prediction from response
+          if (mlServiceResponse?.prakriti?.ml_prediction) {
+            mlPrediction = mlServiceResponse.prakriti.ml_prediction;
+          }
+        } else {
+          const errorText = await mlResponse.text();
+          console.warn(`⚠️ ML service returned status ${mlResponse.status}: ${errorText}`);
         }
-      } else {
-        console.warn(`⚠️ ML service returned status ${mlResponse.status}`);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error('❌ ML service timeout after 10 seconds');
+        } else {
+          throw fetchError;
+        }
       }
-    } catch (mlError) {
-      console.error('❌ ML service error:', mlError);
+    } catch (mlError: any) {
+      console.error('❌ ML service error:', mlError?.message || mlError);
       // Continue without ML prediction
     }
 
     // Step 2: Calculate traditional Prakriti scores
     const prakritiScores = prakritiService.calculateScores(answers);
     const mentalHealthScore = prakritiService.calculateMentalHealth(answers);
-    
+
     console.log('📊 Traditional scores calculated:', prakritiScores);
 
     // Step 3: Merge ML prediction with traditional calculation
@@ -166,18 +186,18 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response, next: Ne
           finalDominant = mlData.predicted;
         }
       }
-      
+
       // Update dominant if ML provides it
       if (mlData?.dominant && ['vata', 'pitta', 'kapha'].includes(mlData.dominant)) {
         finalDominant = mlData.dominant;
         console.log(`🎯 Using ML dominant: ${finalDominant}`);
       }
-      
+
       // Update percentages if ML provides them
       if (mlData?.percent) {
         finalPercent = mlData.percent;
       }
-      
+
       // Update confidence
       if (mlServiceResponse?.confidence) {
         confidenceScore = mlServiceResponse.confidence;
@@ -199,15 +219,15 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response, next: Ne
     };
 
     // Step 5: Prepare ML predictions object for database
-  const mlPredictionsData = mlPrediction || {
-  predicted: finalDominant,
-  confidence: confidenceScore,
-  probabilities: {
-    vata: (finalPercent?.vata ?? 0) / 100,
-    pitta: (finalPercent?.pitta ?? 0) / 100,
-    kapha: (finalPercent?.kapha ?? 0) / 100
-  }
-};
+    const mlPredictionsData = mlPrediction || {
+      predicted: finalDominant,
+      confidence: confidenceScore,
+      probabilities: {
+        vata: (finalPercent?.vata ?? 0) / 100,
+        pitta: (finalPercent?.pitta ?? 0) / 100,
+        kapha: (finalPercent?.kapha ?? 0) / 100
+      }
+    };
 
 
     // Step 6: Insert into database
@@ -257,7 +277,7 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response, next: Ne
         analysisMethod: mlPrediction ? 'hybrid' : 'traditional'
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Questionnaire submission error:', error);
     return res.status(500).json({
@@ -274,7 +294,7 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
   try {
     // @ts-ignore - authMiddleware adds user to request
     const userId = req.user?.id;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -302,7 +322,7 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
     }
 
     const questionnaire = data[0];
-    
+
     // Parse JSON fields if they're strings
     const parseJsonField = (field: any) => {
       if (typeof field === 'string') {
@@ -323,7 +343,7 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
       success: true,
       data: questionnaire
     });
-    
+
   } catch (error) {
     console.error('❌ Error fetching questionnaire:', error);
     return res.status(500).json({
@@ -340,7 +360,7 @@ router.get('/status', asyncHandler(async (req: Request, res: Response) => {
   try {
     // @ts-ignore - authMiddleware adds user to request
     const userId = req.user?.id;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -364,7 +384,7 @@ router.get('/status', asyncHandler(async (req: Request, res: Response) => {
         completionCount: count || 0
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Error checking questionnaire status:', error);
     return res.status(500).json({
@@ -383,7 +403,7 @@ router.get('/:userId', asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
     // @ts-ignore - authMiddleware adds user to request
     const currentUser = req.user;
-    
+
     if (!currentUser) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -416,7 +436,7 @@ router.get('/:userId', asyncHandler(async (req: Request, res: Response) => {
     }
 
     const questionnaire = data[0];
-    
+
     // Parse JSON fields if they're strings
     const parseJsonField = (field: any) => {
       if (typeof field === 'string') {
@@ -444,7 +464,7 @@ router.get('/:userId', asyncHandler(async (req: Request, res: Response) => {
         recommendations
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Error fetching questionnaire:', error);
     return res.status(500).json({
@@ -463,7 +483,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     // @ts-ignore - authMiddleware adds user to request
     const currentUser = req.user;
-    
+
     if (!currentUser) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -499,7 +519,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
       success: true,
       message: 'Questionnaire deleted successfully'
     });
-    
+
   } catch (error) {
     console.error('❌ Error deleting questionnaire:', error);
     return res.status(500).json({

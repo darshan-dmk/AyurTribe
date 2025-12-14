@@ -92,22 +92,22 @@ class ApiService {
   }
 
   // Central request method with Supabase auth
- // Central request method with Supabase auth
-async request(endpoint: string, options: AnyRequestInit = {}) {
-  // API prefix (can be set in .env as REACT_APP_API_PREFIX). Default to '/api'
-  const API_PREFIX = (process.env.REACT_APP_API_PREFIX as string) || '/api';
+  // Central request method with Supabase auth
+  async request(endpoint: string, options: AnyRequestInit = {}) {
+    // API prefix (can be set in .env as REACT_APP_API_PREFIX). Default to '/api'
+    const API_PREFIX = (process.env.REACT_APP_API_PREFIX as string) || '/api';
 
-  // Use a single variable `route` (mutable) so we don't redeclare or reassign a const
-  let route = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    // Use a single variable `route` (mutable) so we don't redeclare or reassign a const
+    let route = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-  // If endpoint doesn't already include the API prefix, add it
-  if (!route.startsWith(API_PREFIX)) {
-    route = `${API_PREFIX}${route}`;
-  }
+    // If endpoint doesn't already include the API prefix, add it
+    if (!route.startsWith(API_PREFIX)) {
+      route = `${API_PREFIX}${route}`;
+    }
 
-const url = `${API_URL}${route}`;
+    const url = `${API_URL}${route}`;
 
-console.log('[ApiService] Making request to:', url);
+    console.log('[ApiService] Making request to:', url);
 
     const token = await this.getAuthToken();
     console.log('[ApiService] Has token:', !!token);
@@ -169,7 +169,7 @@ console.log('[ApiService] Making request to:', url);
 
     // Client-side timeout via AbortController
     const controller = new AbortController();
-    const timeoutMs = 12000;
+    const timeoutMs = 300000
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     (config as any).signal = controller.signal;
 

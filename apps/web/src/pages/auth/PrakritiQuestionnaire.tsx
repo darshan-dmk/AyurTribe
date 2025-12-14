@@ -1,5 +1,5 @@
 // apps/web/src/pages/auth/PrakritiQuestionnaire.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -7,6 +7,8 @@ import { prakritiQuestions, mentalHealthQuestions, Question } from '../../utils/
 import { supabase } from '../../utils/supabase';
 import api from '../../utils/api';
 import { Leaf, Wind, Droplet, Flame, Check, ArrowRight, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageSelector } from '../../components/LanguageSelector';
 
 interface Answer {
   questionId: string;
@@ -18,6 +20,7 @@ interface Answer {
 const PrakritiQuestionnaire: React.FC<{}> = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const [currentPage, setCurrentPage] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,6 +28,9 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(true);
+
+  // Refs for each question to enable smooth scrolling
+  const questionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const allQuestions = [...prakritiQuestions, ...mentalHealthQuestions];
   const midPoint = Math.ceil(allQuestions.length / 2);
@@ -124,6 +130,28 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
       const filtered = prev.filter(a => a.questionId !== question.id);
       return [...filtered, newAnswer];
     });
+
+    // Auto-scroll to next question after a short delay
+    setTimeout(() => {
+      const currentQuestionIndex = currentQuestions.findIndex(q => q.id === question.id);
+      const nextQuestionIndex = currentQuestionIndex + 1;
+
+      if (nextQuestionIndex < currentQuestions.length) {
+        const nextQuestion = currentQuestions[nextQuestionIndex];
+        const nextQuestionElement = questionRefs.current[nextQuestion.id];
+
+        if (nextQuestionElement) {
+          // Calculate scroll position with offset for sticky progress bar
+          const yOffset = -100; // Offset to account for sticky header/progress bar
+          const y = nextQuestionElement.getBoundingClientRect().top + window.pageYOffset + yOffset;
+
+          window.scrollTo({
+            top: y,
+            behavior: 'smooth'
+          });
+        }
+      }
+    }, 300); // Small delay to let the selection animation complete
   };
 
   const isQuestionAnswered = (questionId: string) => {
@@ -155,11 +183,11 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
 
   const handleSubmit = async () => {
     if (!canProceed()) {
-      setError('Please answer all questions before submitting');
+      setError(t('Please answer all questions before submitting'));
       return;
     }
     if (!userId) {
-      setError('User not authenticated. Please login again.');
+      setError(t('User not authenticated. Please login again.'));
       navigate('/auth/login');
       return;
     }
@@ -168,7 +196,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
     setIsSubmitting(true);
     setError('');
 
-    const toastId = toast.loading('Analyzing your Prakriti...');
+    const toastId = toast.loading(t('Analyzing your Prakriti...'));
 
     try {
       if (answers.length < 5) {
@@ -190,14 +218,14 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
       localStorage.removeItem('prakritiAnswers');
       localStorage.removeItem('prakritiPage');
 
-      toast.success('Analysis complete!', { id: toastId });
+      toast.success(t('Analysis complete!'), { id: toastId });
 
       if (response.questionnaire) {
         navigate('/patient/dashboard', {
           state: { prakritiScores: response.questionnaire.scores }
         });
       } else {
-        setError('Failed to process questionnaire results');
+        setError(t('Failed to process questionnaire results'));
       }
     } catch (err: any) {
       console.error('Failed to submit questionnaire:', err);
@@ -222,8 +250,8 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
         >
           <Leaf className="w-16 h-16 text-[#81B29A]" />
         </motion.div>
-        <h2 className="text-2xl font-medium tracking-wide">Preparing your assessment...</h2>
-        <p className="mt-2 text-[#E07A5F]">Connecting to Ayurveda wisdom</p>
+        <h2 className="text-2xl font-medium tracking-wide">{t('Preparing your assessment...')}</h2>
+        <p className="mt-2 text-[#E07A5F]">{t('Connecting to Ayurveda wisdom')}</p>
       </div>
     );
   }
@@ -239,7 +267,10 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
       <div className="max-w-4xl mx-auto px-4 py-8 relative z-10">
 
         {/* Header Section */}
-        <header className="text-center mb-12 pt-8">
+        <header className="text-center mb-12 pt-8 relative">
+          <div className="absolute top-0 right-0">
+            <LanguageSelector />
+          </div>
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -249,11 +280,11 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
               <Leaf className="w-6 h-6 text-[#3D405B]" />
             </div>
             <h1 className="text-4xl md:text-5xl font-serif text-[#3D405B] mb-4 tracking-tight">
-              Prakriti Assessment
+              {t('Prakriti Assessment')}
             </h1>
             <p className="text-lg text-[#3D405B]/70 max-w-xl mx-auto leading-relaxed">
-              Discover your unique Ayurvedic constitution (Dosha) through this mindful assessment.
-              Be honest for the most accurate health insights.
+              {t('Discover your unique Ayurvedic constitution (Dosha) through this mindful assessment.')}
+              {t('Be honest for the most accurate health insights.')}
             </p>
           </motion.div>
         </header>
@@ -261,7 +292,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
         {/* Progress Bar */}
         <div className="mb-10 sticky top-4 z-20 bg-[#FDFBF7]/80 backdrop-blur-md py-4 px-6 rounded-2xl shadow-sm border border-[#3D405B]/5">
           <div className="flex justify-between items-center mb-2 text-sm font-medium text-[#3D405B]">
-            <span>Progress</span>
+            <span>{t('Progress')}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2 bg-[#3D405B]/10 rounded-full overflow-hidden">
@@ -273,8 +304,8 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
             />
           </div>
           <div className="flex justify-between mt-2 text-xs text-[#3D405B]/50">
-            <span>Part 1: Physical Traits</span>
-            <span>Part 2: Lifestyle & Mind</span>
+            <span>{t('Part 1: Physical Traits')}</span>
+            <span>{t('Part 2: Lifestyle & Mind')}</span>
           </div>
         </div>
 
@@ -292,6 +323,9 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
               {currentQuestions.map((question, idx) => (
                 <motion.div
                   key={question.id}
+                  ref={(el) => {
+                    questionRefs.current[question.id] = el;
+                  }}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
@@ -307,7 +341,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
                         {question.category}
                       </span>
                       <h3 className="text-xl font-medium text-[#3D405B] leading-snug">
-                        {question.text}
+                        {t(question.text)}
                       </h3>
                     </div>
                   </div>
@@ -340,7 +374,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
                             {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                           </div>
 
-                          <span className="text-base font-medium">{option.text}</span>
+                          <span className="text-base font-medium">{t(option.text)}</span>
 
                           {/* Optional: Icon indicator of trait (hidden for user, but useful for debug) 
                                                 <span className="ml-auto text-xs opacity-50 uppercase tracking-widest hidden md:block">{option.trait}</span>
@@ -373,7 +407,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
               className="flex items-center gap-2 px-6 py-3 rounded-xl text-[#3D405B] font-medium hover:bg-[#3D405B]/5 transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
-              {currentPage === 0 ? 'Back' : 'Previous Section'}
+              {currentPage === 0 ? t('Back') : t('Previous Section')}
             </button>
 
             {currentPage === 1 ? (
@@ -388,7 +422,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
                   }
                         `}
               >
-                {isSubmitting ? 'Analyzing...' : 'Complete Assessment'}
+                {isSubmitting ? t('Analyzing...') : t('Complete Assessment')}
                 {!isSubmitting && <Check className="w-5 h-5" />}
               </Button>
             ) : (
@@ -403,7 +437,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
                   }
                         `}
               >
-                Next Section
+                {t('Next Section')}
                 <ArrowRight className="w-5 h-5" />
               </button>
             )}

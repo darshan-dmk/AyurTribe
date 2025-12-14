@@ -6,6 +6,8 @@ import { Mail, Lock, User, ArrowRight, AlertCircle, Check, ChevronRight, Chevron
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageSelector } from '../../components/LanguageSelector';
 
 // Combined Interface
 interface RegistrationData {
@@ -36,6 +38,7 @@ interface RegistrationData {
 
 const Register = () => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -229,7 +232,7 @@ const Register = () => {
                                     {step}
                                 </div>
                                 <span className={`text-sm font-medium ${currentPage >= step ? 'text-amber-100' : 'text-emerald-700'}`}>
-                                    {step === 1 ? 'Account' : step === 2 ? 'Profile' : 'Context'}
+                                    {step === 1 ? t('Account') : step === 2 ? t('Profile') : t('Context')}
                                 </span>
                             </div>
                         ))}
@@ -239,27 +242,30 @@ const Register = () => {
 
             {/* Right Side - Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white overflow-y-auto relative">
+                <div className="absolute top-8 right-8 z-50">
+                    <LanguageSelector />
+                </div>
                 <Link to="/" className="absolute top-8 left-8 text-stone-500 hover:text-stone-800 transition-colors flex items-center gap-2 group">
                     <div className="p-2 rounded-full group-hover:bg-stone-100 transition-colors">
                         <ArrowRight className="w-5 h-5 rotate-180" />
                     </div>
-                    <span className="font-medium">Back to Home</span>
+                    <span className="font-medium">{t('Back to Home')}</span>
                 </Link>
                 <div className="w-full max-w-lg space-y-8 mt-12 lg:mt-0">
                     <div className="flex justify-between items-center">
                         <div className="text-left">
                             <h2 className="text-3xl font-extrabold text-stone-900 tracking-tight">
-                                {currentPage === 1 && "Create Account"}
-                                {currentPage === 2 && "Personal Profile"}
-                                {currentPage === 3 && "Health Context"}
+                                {currentPage === 1 && t("Create Account")}
+                                {currentPage === 2 && t("Personal Profile")}
+                                {currentPage === 3 && t("Health Context")}
                             </h2>
                             <p className="mt-2 text-stone-600">
-                                Step {currentPage} of {totalPages}
+                                {t('Step')} {currentPage} {t('of')} {totalPages}
                             </p>
                         </div>
                         {currentPage === 1 && (
                             <Link to="/auth/login" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">
-                                Sign In instead
+                                {t('Sign In instead')}
                             </Link>
                         )}
                     </div>
@@ -408,17 +414,17 @@ const Register = () => {
                         <div className="flex justify-between pt-6">
                             {currentPage > 1 ? (
                                 <Button type="button" variant="outline" onClick={handleBack} leftIcon={<ChevronLeft className="w-4 h-4" />}>
-                                    Back
+                                    {t('Back')}
                                 </Button>
                             ) : <div></div>}
 
                             {currentPage < totalPages ? (
                                 <Button type="button" onClick={handleNext} rightIcon={<ChevronRight className="w-4 h-4" />}>
-                                    Continue
+                                    {t('Continue')}
                                 </Button>
                             ) : (
                                 <Button type="submit" isLoading={loading} rightIcon={<Check className="w-4 h-4" />}>
-                                    Create Account
+                                    {t('Create Account')}
                                 </Button>
                             )}
                         </div>

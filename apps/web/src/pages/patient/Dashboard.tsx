@@ -1,4 +1,4 @@
-// apps/web/src/pages/patient/Dashboard.tsx - UPDATED to use backend API
+﻿// apps/web/src/pages/patient/Dashboard.tsx - UPDATED to use backend API
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 
 
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../utils/supabase';
 import { profileService } from '../../services/profileService';
@@ -17,6 +17,7 @@ import PrakritiSummaryCard from '../../components/PrakritiSummaryCard';
 import api from '../../utils/api';
 import PrakritiVisualizationEnhanced from '../../components/PrakritiVisualizationEnhanced';
 import NutritionDashboard from '../../components/NutritionDashboard';
+import PatientNavbar from '../../components/PatientNavbar';
 
 /* ---------- types ---------- */
 interface PrakritiScores {
@@ -90,7 +91,15 @@ const PatientDashboard: React.FC = () => {
   const [healthMetrics, setHealthMetrics] = useState<HealthMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeView, setActiveView] = useState('dashboard');
+  const [searchParams] = useSearchParams();
+  const [activeView, setActiveView] = useState(searchParams.get('view') || 'dashboard');
+
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view) {
+      setActiveView(view);
+    }
+  }, [searchParams]);
 
   // Theme is always 'dark' (Ayurvedic Portal)
   const theme = 'dark'; const [selectedCard, setSelectedCard] = useState<string | null>(null);
@@ -722,7 +731,7 @@ const PatientDashboard: React.FC = () => {
             value: `${latest.blood_pressure_systolic}/${latest.blood_pressure_diastolic}`,
             unit: 'mmHg',
             status: 'good', // Logic to determine status could be added
-            icon: '❤️'
+            icon: 'â¤ï¸'
           });
         }
 
@@ -732,7 +741,7 @@ const PatientDashboard: React.FC = () => {
             value: latest.weight,
             unit: 'kg',
             status: 'good',
-            icon: '⚖️'
+            icon: 'âš–ï¸'
           });
         }
 
@@ -971,7 +980,7 @@ const PatientDashboard: React.FC = () => {
             <div className="mt-6 p-3 rounded-lg" style={{ background: 'rgba(78,139,58,0.04)' }}>
               <div className="text-sm font-medium" style={{ color: '#2c1810' }}>Tip</div>
               <div className="text-xs" style={{ color: '#5a4a2f' }}>
-                Tap each card on dashboard to explore — the visualization will animate and highlight findings.
+                Tap each card on dashboard to explore â€” the visualization will animate and highlight findings.
               </div>
             </div>
           </div>
@@ -1107,189 +1116,10 @@ const PatientDashboard: React.FC = () => {
       <div className="fixed w-[900px] h-[900px] top-1/2 left-1/2 border border-yellow-400/8 rounded-full pulse-ring" />
 
       {/* Header */}
-      <header className="bg-white/30 backdrop-blur-sm sticky top-0 z-40" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="header-brand">
-                <div className="brand-logo mr-3">
-                  <img src="/ayurtribelogo.png" alt="Ayur Tribe Logo" className="w-12 h-12 object-contain p-1 rounded-lg bg-[#1a4731]" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold" style={{ color: 'var(--accent-sage)' }}>Ayur Tribe</div>
-                  <div className="text-xs card-sub">Personalized Ayurvedic Care</div>
-                </div>
-              </div>
+      {/* Navigation Bar */}
+      <PatientNavbar onProfileClick={() => setShowProfileManager(true)} />
 
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center ml-8 space-x-6">
-                <button
-                  onClick={() => setActiveView('dashboard')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'dashboard'
-                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                    : 'text-white/80 hover:text-white'
-                    }`}
-                >
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => setActiveView('health')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'health'
-                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                    : 'text-white/80 hover:text-white'
-                    }`}
-                >
-                  Health Profile
-                </button>
-                {prakritiScores && (
-                  <button
-                    onClick={() => setActiveView('visualization')}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'visualization'
-                      ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                      : 'text-white/80 hover:text-white'
-                      }`}
-                  >
-                    Visualization
-                  </button>
-                )}
-                <button
-                  onClick={() => setActiveView('appointments')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeView === 'appointments'
-                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                    : 'text-white/80 hover:text-white'
-                    }`}
-                >
-                  My Bookings
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-md text-white hover:bg-white/10"
-              >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {mobileMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
-              </button>
-            </div>
-
-            {/* Header Right: search, theme toggle, profile */}
-            <div className="hidden md:flex items-center space-x-3">
-              <input
-                placeholder="Search records, tips, doctors..."
-                className="search-input hidden sm:block"
-                aria-label="Search"
-                onFocus={(e) => e.currentTarget.setAttribute('placeholder', 'Search (e.g. ' + (prakritiScores?.dominant || 'vata') + ')')}
-                onBlur={(e) => e.currentTarget.setAttribute('placeholder', 'Search records, tips, doctors...')}
-              />
-
-              <button
-                onClick={() => setShowProfileManager(true)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                <div className="w-8 h-8" style={{
-                  background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))',
-                  borderRadius: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 6px 18px rgba(184,134,11,0.18)',
-                  color: '#2c1810',
-                  fontWeight: 700
-                }}>
-                  {user?.name?.[0] || user?.first_name?.[0] || 'U'}
-                </div>
-
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                style={{ color: 'rgba(255,255,255,0.85)' }}
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              className="md:hidden py-4 px-4 border-t border-white/10 bg-[#161b16]/95 backdrop-blur-md"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              <div className="flex flex-col space-y-3">
-                <button
-                  onClick={() => { setActiveView('dashboard'); setMobileMenuOpen(false); }}
-                  className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'dashboard'
-                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                    : 'text-white/80 hover:text-white'
-                    }`}
-                >
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => { setActiveView('health'); setMobileMenuOpen(false); }}
-                  className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'health'
-                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                    : 'text-white/80 hover:text-white'
-                    }`}
-                >
-                  Health Profile
-                </button>
-                {prakritiScores && (
-                  <button
-                    onClick={() => { setActiveView('visualization'); setMobileMenuOpen(false); }}
-                    className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'visualization'
-                      ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                      : 'text-white/80 hover:text-white'
-                      }`}
-                  >
-                    Visualization
-                  </button>
-                )}
-                <button
-                  onClick={() => { setActiveView('appointments'); setMobileMenuOpen(false); }}
-                  className={`px-3 py-2 rounded-md text-sm font-medium text-left ${activeView === 'appointments'
-                    ? 'bg-[#E07A5F]/10 text-[#E07A5F]'
-                    : 'text-white/80 hover:text-white'
-                    }`}
-                >
-                  Appointments
-                </button>
-
-                <div className="pt-4 mt-4 border-t border-white/10">
-                  <button
-                    onClick={() => { setShowProfileManager(true); setMobileMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white"
-                  >
-                    Profile
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
         {/* Dashboard View */}
         {activeView === 'dashboard' && (
           <div className="space-y-8 fade-in">
@@ -1443,7 +1273,7 @@ const PatientDashboard: React.FC = () => {
                   {prakritiScores ? 'Retake your constitution analysis' : 'Discover your unique constitution'}
                 </p>
                 <div className="text-amber-700 font-medium text-sm group-hover:text-amber-800">
-                  {prakritiScores ? 'Retake Assessment →' : 'Take Assessment →'}
+                  {prakritiScores ? 'Retake Assessment â†’' : 'Take Assessment â†’'}
                 </div>
               </button>
 
@@ -1462,7 +1292,7 @@ const PatientDashboard: React.FC = () => {
                 <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2">Book Appointment</h4>
                 <p className="text-sm text-gray-400 mb-4">Schedule consultation with Ayurvedic experts</p>
                 <div className="text-green-600 font-medium text-sm group-hover:text-green-700">
-                  Book Now →
+                  Book Now â†’
                 </div>
               </button>
 
@@ -1481,14 +1311,14 @@ const PatientDashboard: React.FC = () => {
                 <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2">Manage Profile</h4>
                 <p className="text-sm text-gray-400 mb-4">Update personal and health information</p>
                 <div className="text-purple-600 font-medium text-sm group-hover:text-purple-700">
-                  Edit Profile →
+                  Edit Profile â†’
                 </div>
               </button>
 
               <button
                 className="bg-white rounded-xl p-6 hover:shadow-xl transition-all text-left group ayurveda-card"
                 disabled={!prakritiScores}
-                onClick={() => setActiveView('nutrition')}
+                onClick={() => navigate('/patient/nutrition')}
               >
                 <div className="flex items-center mb-4">
                   <div className="p-3 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
@@ -1503,7 +1333,7 @@ const PatientDashboard: React.FC = () => {
                 </p>
                 <div className={`font-medium text-sm ${prakritiScores ? 'text-orange-600 group-hover:text-orange-700' : 'text-gray-400'
                   }`}>
-                  {prakritiScores ? 'View Plan →' : 'Assessment Required'}
+                  {prakritiScores ? 'View Plan â†’' : 'Assessment Required'}
                 </div>
               </button>
             </div>
@@ -1709,10 +1539,10 @@ const PatientDashboard: React.FC = () => {
                     <div className="p-4 bg-green-900/20 rounded-lg">
                       <h5 className="font-medium text-green-300 mb-2">Wellness Tips</h5>
                       <ul className="text-sm text-green-700 space-y-1">
-                        <li>• Practice daily meditation or mindfulness</li>
-                        <li>• Maintain regular sleep schedule</li>
-                        <li>• Engage in physical activities you enjoy</li>
-                        <li>• Connect with supportive friends and family</li>
+                        <li>â€¢ Practice daily meditation or mindfulness</li>
+                        <li>â€¢ Maintain regular sleep schedule</li>
+                        <li>â€¢ Engage in physical activities you enjoy</li>
+                        <li>â€¢ Connect with supportive friends and family</li>
                       </ul>
                     </div>
                   </div>
@@ -1888,7 +1718,7 @@ const PatientDashboard: React.FC = () => {
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 bg-[#2c332b] rounded-full flex items-center justify-center mb-4">
-                  <span className="text-3xl">👋</span>
+                  <span className="text-3xl">ðŸ‘‹</span>
                 </div>
                 <h3 className="text-xl font-bold text-[#e1dccc] mb-2">Leaving so soon?</h3>
                 <p className="text-[#8c9489] mb-6">
