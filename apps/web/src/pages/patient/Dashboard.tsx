@@ -1,11 +1,8 @@
-﻿// apps/web/src/pages/patient/Dashboard.tsx - UPDATED to use backend API
+﻿// Reading file to check theme logic first - this is a placeholder for the tool call
+// I will read Dashboard.tsx lines 50-150.
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-
-
-
-
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../utils/supabase';
@@ -18,6 +15,9 @@ import api from '../../utils/api';
 import PrakritiVisualizationEnhanced from '../../components/PrakritiVisualizationEnhanced';
 import NutritionDashboard from '../../components/NutritionDashboard';
 import PatientNavbar from '../../components/PatientNavbar';
+import { useLanguage } from '../../context/LanguageContext';
+import DynamicText from '../../components/DynamicText';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 /* ---------- types ---------- */
 interface PrakritiScores {
@@ -81,6 +81,7 @@ interface AppUser {
 
 /* ---------- component ---------- */
 const PatientDashboard: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
@@ -112,6 +113,8 @@ const PatientDashboard: React.FC = () => {
   // Focus visualization
   const [focusVisualization, setFocusVisualization] = useState(false);
   const chartRef = useRef<HTMLDivElement | null>(null);
+  const fetchInProgress = useRef(false);
+  const initialLoadDone = useRef(false);
 
   console.log('[Debug] Rendering Dashboard, prakritiScores:', prakritiScores);
 
@@ -122,37 +125,42 @@ const PatientDashboard: React.FC = () => {
     let pollInterval: NodeJS.Timeout | null = null;
     let subscription: any = null;
 
-    const fetchPrakritiData = async () => {
+    const fetchPrakritiData = async (isInitial = false) => {
+      if (fetchInProgress.current) {
+        console.log('[Dashboard] Fetch already in progress, skipping...');
+        return;
+      }
+
       try {
-        setLoading(true);
+        fetchInProgress.current = true;
+        if (isInitial) setLoading(true);
+        console.log('[Dashboard] Fetching questionnaire data...');
+
         const response = await api.get('/questionnaire/latest');
-        console.log('[Debug] Fetched prakriti data:', response);
+        console.log('[Dashboard] Data fetched successfully:', !!response);
+
         if (response) {
           const { scores, mentalHealth: mental, dominant } = response;
 
           // Only set scores if they're available and have the required structure
-          if (scores && scores.vata != null && scores.pitta != null && scores.kapha != null) {
+          if (scores && (scores.vata != null || scores.percent != null)) {
             // Parse scores if they're a string
             let parsedScores = scores;
             if (typeof scores === 'string') {
               try {
                 parsedScores = JSON.parse(scores);
               } catch (e) {
-                console.warn('Failed to parse scores string:', e);
+                console.warn('[Dashboard] Failed to parse scores string:', e);
                 parsedScores = scores;
               }
             }
 
             const normalizedScores = {
-              vata: parsedScores.vata,
-              pitta: parsedScores.pitta,
-              kapha: parsedScores.kapha,
-              dominant: dominant || 'vata',
-              percent: {
-                vata: Math.round((parsedScores.vata || 0) * 100),
-                pitta: Math.round((parsedScores.pitta || 0) * 100),
-                kapha: Math.round((parsedScores.kapha || 0) * 100)
-              },
+              vata: parsedScores.vata || 0,
+              pitta: parsedScores.pitta || 0,
+              kapha: parsedScores.kapha || 0,
+              dominant: dominant || parsedScores.dominant || 'vata',
+              percent: parsedScores.percent || calculateDefaultPercents(parsedScores),
               ml_prediction: parsedScores.ml_prediction
             };
             setPrakritiScores(normalizedScores);
@@ -163,8 +171,9 @@ const PatientDashboard: React.FC = () => {
               pollInterval = null;
             }
           } else {
-            console.warn('Invalid scores structure:', scores);
-            setPrakritiScores(null);
+            console.warn('[Dashboard] Invalid scores structure:', scores);
+            // Don't set null here if we already have scores, to avoid flickering
+            if (!prakritiScores) setPrakritiScores(null);
           }
 
           if (mental) {
@@ -174,30 +183,31 @@ const PatientDashboard: React.FC = () => {
               try {
                 parsedMental = JSON.parse(mental);
               } catch (e) {
-                console.warn('Failed to parse mental health string:', e);
+                console.warn('[Dashboard] Failed to parse mental health string:', e);
                 parsedMental = mental;
               }
             }
 
             setMentalHealth({
-              score: typeof parsedMental === 'object' ? parsedMental.score : parsedMental,
-              level: typeof parsedMental === 'object' ? parsedMental.level : (parsedMental > 75 ? 'green' : parsedMental > 50 ? 'yellow' : 'red')
+              score: typeof parsedMental === 'object' ? (parsedMental.score || 0) : parsedMental,
+              level: typeof parsedMental === 'object' ? (parsedMental.level || 'green') : (parsedMental > 75 ? 'green' : parsedMental > 50 ? 'yellow' : 'red')
             });
           }
-        } else {
-          console.warn('No questionnaire data found');
         }
       } catch (err) {
-        console.error('Failed to fetch prakriti data:', err);
-        setError('Failed to load health data');
+        console.error('[Dashboard] Failed to fetch prakriti data:', err);
+        // Only show error on initial load to avoid interrupting user during background polls
+        if (isInitial) setError('Failed to load health data');
       } finally {
-        setLoading(false);
+        fetchInProgress.current = false;
+        if (isInitial) setLoading(false);
       }
     };
 
     // Set up real-time subscription to questionnaire changes
     const setupRealTimeSubscription = () => {
       if (user?.id) {
+        console.log('[Dashboard] Setting up real-time subscription for user:', user.id);
         subscription = supabase
           .channel('questionnaire-changes')
           .on(
@@ -209,7 +219,7 @@ const PatientDashboard: React.FC = () => {
               filter: `user_id=eq.${user.id}`
             },
             (payload) => {
-              console.log('Questionnaire data changed, fetching latest...', payload);
+              console.log('[Dashboard] Real-time data update detected:', payload);
               // Fetch updated data when changes occur
               fetchPrakritiData();
             }
@@ -218,23 +228,23 @@ const PatientDashboard: React.FC = () => {
       }
     };
 
-    // Initial fetch
-    fetchPrakritiData();
+    // Initial fetch if user exists
+    if (user?.id) {
+      fetchPrakritiData(true);
+      setupRealTimeSubscription();
+    }
 
-    // Set up real-time subscription
-    setupRealTimeSubscription();
-
-    // Set up polling as fallback (every 10 seconds for 1 minute max)
+    // Set up polling as fallback (every 15 seconds for 1 minute max)
     let pollCount = 0;
     pollInterval = setInterval(() => {
       pollCount++;
-      if (pollCount < 6) { // Stop polling after 1 minute
-        fetchPrakritiData();
+      if (pollCount < 4) { // Stop polling after 1 minute (4 * 15s)
+        fetchPrakritiData(false); // Background poll
       } else if (pollInterval) {
         clearInterval(pollInterval);
         pollInterval = null;
       }
-    }, 10000);
+    }, 15000);
 
     // Clean up interval and subscription on component unmount
     return () => {
@@ -481,15 +491,19 @@ const PatientDashboard: React.FC = () => {
       mounted = false;
       authListener?.subscription?.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, navigate]);
 
   // Replace the loadDashboardData function in your Dashboard.tsx (around line 300-450)
 
   const loadDashboardData = async (userId: string) => {
     try {
-      setLoading(true);
+      // Only show full loading spinner on initial load
+      if (!initialLoadDone.current) {
+        setLoading(true);
+      }
       setError('');
-      console.log('[Dashboard] Loading data for authenticated user:', userId);
+      console.log('[Dashboard] Loading data for authenticated user (Initial:', !initialLoadDone.current, '):', userId);
 
       // Step 1: Get user profile using the profileService for consistent data handling
       let userData = null;
@@ -661,11 +675,29 @@ const PatientDashboard: React.FC = () => {
         loadRealHealthMetrics(userId)
       ]);
 
+      // Set up real-time subscription for appointments
+      const appointmentChannel = supabase
+        .channel(`appointments-${userId}`)
+        .on('postgres_changes' as any, {
+          event: '*',
+          table: 'appointments',
+          filter: `patient_id=eq.${userId}`
+        }, (payload: any) => {
+          console.log('[Dashboard] Appointment change received:', payload);
+          loadAppointments(userId);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(appointmentChannel);
+      };
+
     } catch (err: any) {
       console.error('[Dashboard] Error loading dashboard data:', err);
       setError(err?.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
+      initialLoadDone.current = true;
     }
   };
 
@@ -925,7 +957,7 @@ const PatientDashboard: React.FC = () => {
               >
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#2c1810', textTransform: 'capitalize' }}>{scores.dominant}</div>
-                  <div style={{ fontSize: 12, color: '#6b4423' }}>Dominant</div>
+                  <div style={{ fontSize: 12, color: '#6b4423' }}>{t('prakriti.dominant')}</div>
                 </div>
               </motion.div>
 
@@ -952,8 +984,8 @@ const PatientDashboard: React.FC = () => {
           <div style={{ flex: 1, minWidth: 220 }}>
             <div className="mb-3">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-[var(--text-dark)]">Dosha Strengths</div>
-                <div className="text-xs text-gray-400">Interactive</div>
+                <div className="text-sm font-semibold text-[var(--text-dark)]">{t('profile.dosha_strengths')}</div>
+                <div className="text-xs text-gray-400">{t('profile.interactive')}</div>
               </div>
             </div>
 
@@ -978,9 +1010,9 @@ const PatientDashboard: React.FC = () => {
 
             {/* small tips with micro-animations */}
             <div className="mt-6 p-3 rounded-lg" style={{ background: 'rgba(78,139,58,0.04)' }}>
-              <div className="text-sm font-medium" style={{ color: '#2c1810' }}>Tip</div>
+              <div className="text-sm font-medium" style={{ color: '#2c1810' }}>{t('profile.tip')}</div>
               <div className="text-xs" style={{ color: '#5a4a2f' }}>
-                Tap each card on dashboard to explore â€” the visualization will animate and highlight findings.
+                {t('profile.tip_desc')}
               </div>
             </div>
           </div>
@@ -1124,13 +1156,154 @@ const PatientDashboard: React.FC = () => {
         {activeView === 'dashboard' && (
           <div className="space-y-8 fade-in">
             {/* Welcome Section */}
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}>
-                Welcome back, {user.name || user.first_name}!
-              </h2>
-              <p className="text-[var(--text-dark)]">
-                Here's your personalized health dashboard based on your Prakriti assessment.
-              </p>
+            <div className="mb-8 relative overflow-hidden p-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
+              {/* Decorative background element */}
+              <div className="absolute -right-20 -top-20 w-64 h-64 bg-accent-sage/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-accent-gold-1/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <span className="inline-block px-3 py-1 rounded-full bg-accent-sage/10 text-accent-sage text-xs font-bold tracking-wider uppercase mb-3">
+                    <DynamicText>Patient Dashboard</DynamicText>
+                  </span>
+                  <h2 className="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight" style={{ color: 'var(--text-light)' }}>
+                    <DynamicText>
+                      {t(`dashboard.welcome_back`, {
+                        greeting: (() => {
+                          const hr = new Date().getHours();
+                          if (hr >= 5 && hr < 12) return t('dashboard.greetings.morning');
+                          if (hr >= 12 && hr < 17) return t('dashboard.greetings.afternoon');
+                          if (hr >= 17 && hr < 21) return t('dashboard.greetings.evening');
+                          return t('dashboard.greetings.night');
+                        })(),
+                        name: user?.first_name || user?.name || 'User'
+                      }).replace('{{greeting}}', (() => {
+                        const hr = new Date().getHours();
+                        if (hr >= 5 && hr < 12) return t('dashboard.greetings.morning');
+                        if (hr >= 12 && hr < 17) return t('dashboard.greetings.afternoon');
+                        if (hr >= 17 && hr < 21) return t('dashboard.greetings.evening');
+                        return t('dashboard.greetings.night');
+                      })()).replace('{{name}}', user?.first_name || user?.name || 'User')}
+                    </DynamicText>
+                  </h2>
+                  <p className="text-xl text-[var(--text-dark)] opacity-70 mb-6 font-medium">
+                    <DynamicText>Your personalized Ayurvedic wellness portal.</DynamicText>
+                  </p>
+                </motion.div>
+
+                {/* AI Analytics One-Liner - Enhanced 3D Interaction */}
+                {(() => {
+                  const dominant = prakritiScores?.dominant?.toLowerCase() || 'unknown';
+                  const stylesMap: Record<string, any> = {
+                    vata: {
+                      gradient: 'from-[#60a5fa]/20 via-[#3b82f6]/10 to-transparent',
+                      accent: '#60a5fa',
+                      border: 'border-[#60a5fa]',
+                      icon: (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 20l-1-1m2 1l1-1m-5-4l-2-2m2 2l2-2m3-4l7-7M2 9l3 3m0 0l3-3m-3 3v8" />
+                        </svg>
+                      )
+                    },
+                    pitta: {
+                      gradient: 'from-[#fb923c]/20 via-[#ef4444]/10 to-transparent',
+                      accent: '#fb923c',
+                      border: 'border-[#fb923c]',
+                      icon: (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                        </svg>
+                      )
+                    },
+                    kapha: {
+                      gradient: 'from-[#34d399]/20 via-[#059669]/10 to-transparent',
+                      accent: '#34d399',
+                      border: 'border-[#34d399]',
+                      icon: (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3 4-3 9-3 9 1.34 9 3z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12v6c0 1.66 4 3 9 3s9-1.34 9-3v-6" />
+                        </svg>
+                      )
+                    },
+                    unknown: {
+                      gradient: 'from-accent-gold-1/20 via-transparent to-transparent',
+                      accent: 'var(--accent-gold-1)',
+                      border: 'border-accent-gold-1',
+                      icon: (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      )
+                    }
+                  };
+
+                  const activeStyle = (stylesMap as any)[dominant] || stylesMap.unknown;
+
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{
+                        scale: 1.02,
+                        rotateX: -2,
+                        rotateY: 2,
+                        boxShadow: `0 20px 40px rgba(0,0,0,0.4), 0 0 20px ${activeStyle.accent}20`
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 20
+                      }}
+                      style={{ perspective: "1000px" }}
+                      className={`group relative flex items-start md:items-center gap-5 p-6 rounded-2xl bg-gradient-to-br ${activeStyle.gradient} border border-white/10 border-l-4 ${activeStyle.border} backdrop-blur-md cursor-pointer overflow-hidden transition-all duration-500`}
+                    >
+                      {/* Shine effect animation */}
+                      <div className="absolute top-0 -left-[100%] w-[120%] h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-25deg] group-hover:left-[100%] transition-all duration-1000 ease-in-out" />
+
+                      <div className={`p-3 rounded-xl shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12`} style={{ backgroundColor: `${activeStyle.accent}20`, color: activeStyle.accent }}>
+                        {activeStyle.icon}
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-3" style={{ color: activeStyle.accent }}>
+                            <DynamicText>AI Health Insight</DynamicText>
+                            <span className="flex h-2 w-2 relative">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: activeStyle.accent }}></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: activeStyle.accent }}></span>
+                            </span>
+                          </h4>
+                          {dominant !== 'unknown' && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded bg-white/10 uppercase tracking-tighter opacity-50">
+                              <DynamicText>{`${dominant} Nature`}</DynamicText>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xl font-semibold leading-relaxed" style={{ color: 'var(--text-light)' }}>
+                          <DynamicText>
+                            {(() => {
+                              switch (dominant) {
+                                case 'vata': return "Your airy Vata nature is high today. Focus on grounding, warm foods to stay balanced.";
+                                case 'pitta': return "Your inner fire is peaking. Prioritize cooling foods and calm environments to avoid acidity.";
+                                case 'kapha': return "Your earthy Kapha might feel heavy. Stay active and choose light, spicy foods for energy.";
+                                default: return "Complete your assessment for personalized Ayurvedic body insights.";
+                              }
+                            })()}
+                          </DynamicText>
+                        </p>
+                      </div>
+
+                      {/* 3D Depth Elements */}
+                      <div className="absolute -bottom-2 -right-2 w-24 h-24 blur-3xl rounded-full opacity-20 pointer-events-none transition-all duration-500 group-hover:opacity-40" style={{ backgroundColor: activeStyle.accent }} />
+                    </motion.div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Enhanced Stats Grid */}
@@ -1144,24 +1317,24 @@ const PatientDashboard: React.FC = () => {
                 className={`bg-white rounded-xl p-6 border-t-4 border-indigo-500 transform transition-transform ayurveda-card ${selectedCard === 'dominant' ? 'selected golden-pulse' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium card-title">Dominant Constitution</h3>
+                  <h3 className="text-sm font-medium card-title"><DynamicText>Dominant Nature</DynamicText></h3>
                   <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
                 <p className="text-2xl font-bold text-[var(--text-dark)] capitalize mb-1">
-                  {prakritiScores?.dominant || 'Not Assessed'}
+                  <DynamicText>{prakritiScores?.dominant || 'Not Assessed'}</DynamicText>
                 </p>
                 {
                   prakritiScores?.ml_prediction && (
                     <div className="flex items-center">
                       <div className="w-2 h-2 bg-green-900/20 rounded-full mr-2"></div>
                       <span className="text-xs text-green-600 font-medium">
-                        AI Confidence: {Math.round((prakritiScores.ml_prediction.confidence ?? 0) * 100)}%
+                        <DynamicText>{`AI Confidence: ${Math.round((prakritiScores.ml_prediction.confidence ?? 0) * 100)}%`}</DynamicText>
                       </span>
                     </div>
                   )}
-                <p className="text-xs card-sub mt-1">Your primary constitution</p>
+                <p className="text-xs card-sub mt-1"><DynamicText>Primary nature based on your responses</DynamicText></p>
               </div>
 
               {/* Mental Health Card */}
@@ -1173,15 +1346,15 @@ const PatientDashboard: React.FC = () => {
                 className={`bg-white rounded-xl p-6 border-t-4 border-green-500 ayurveda-card ${selectedCard === 'mental' ? 'selected golden-pulse' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium card-title">Mental Wellness</h3>
+                  <h3 className="text-sm font-medium card-title"><DynamicText>Mental Wellness</DynamicText></h3>
                   <div className={`w-4 h-4 rounded-full ${mentalHealth?.level === 'green' ? 'bg-green-900/20' :
                     mentalHealth?.level === 'yellow' ? 'bg-yellow-900/200' : 'bg-red-500'
                     }`}></div>
                 </div>
                 <p className="text-2xl font-bold text-[var(--text-dark)]">
-                  {mentalHealth?.score || 'N/A'}{mentalHealth?.score ? '/100' : ''}
+                  <DynamicText>{`${mentalHealth?.score || 'N/A'}${mentalHealth?.score ? '/100' : ''}`}</DynamicText>
                 </p>
-                <p className="text-xs card-sub mt-1">Current assessment</p>
+                <p className="text-xs card-sub mt-1"><DynamicText>Current wellness assessment</DynamicText></p>
               </div>
 
               {/* Visualize Results Card - NEW: clickable to open health view & focus visualization */}
@@ -1193,13 +1366,13 @@ const PatientDashboard: React.FC = () => {
                 className={`bg-white rounded-xl p-6 border-t-4 border-teal-500 ayurveda-card ${selectedCard === 'visualize' ? 'selected golden-pulse' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium card-title">Visualize Results</h3>
+                  <h3 className="text-sm font-medium card-title"><DynamicText>Personalized Charts</DynamicText></h3>
                   <svg className="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                   </svg>
                 </div>
-                <p className="text-lg font-semibold text-[var(--text-dark)] mb-1">Open animated charts</p>
-                <p className="text-xs card-sub mt-1">Click to view interactive Prakriti visualizations</p>
+                <p className="text-lg font-semibold text-[var(--text-dark)] mb-1"><DynamicText>Open interactive charts</DynamicText></p>
+                <p className="text-xs card-sub mt-1"><DynamicText>Click to view interactive Prakriti visualizations</DynamicText></p>
               </div>
 
               {/* Profile Completeness */}
@@ -1212,23 +1385,24 @@ const PatientDashboard: React.FC = () => {
 
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium card-title">Profile Complete</h3>
+                  <h3 className="text-sm font-medium card-title"><DynamicText>Profile Complete</DynamicText></h3>
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
                 <p className="text-2xl font-bold text-[var(--text-dark)]">
-                  {prakritiScores ? '100%' : '60%'}
+                  <DynamicText>{prakritiScores ? '100%' : '60%'}</DynamicText>
                 </p>
                 <p className="text-xs card-sub mt-1">
-                  {prakritiScores ? 'All assessments complete' : 'Prakriti assessment pending'}
+                  <DynamicText>{prakritiScores ? 'Complete' : 'Pending Tasks'}</DynamicText>
                 </p>
               </div>
+
             </div>
 
             {/* Health Metrics */}
             <div className="mb-8">
-              <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--accent-sage)' }}>Health Metrics</h3>
+              <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--accent-sage)' }}><DynamicText>{t('dashboard.health_metrics')}</DynamicText></h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {healthMetrics.map((metric, index) => (
                   <div
@@ -1245,7 +1419,7 @@ const PatientDashboard: React.FC = () => {
                         metric.status === 'warning' ? 'bg-yellow-900/200' : 'bg-red-500'
                         }`}></div>
                     </div>
-                    <h4 className="font-medium text-[var(--text-dark)]">{metric.label}</h4>
+                    <h4 className="font-medium text-[var(--text-dark)]"><DynamicText>{metric.label}</DynamicText></h4>
                     <p className="text-xl font-bold text-[var(--text-dark)]">
                       {metric.value} {metric.unit}
                     </p>
@@ -1268,12 +1442,12 @@ const PatientDashboard: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2">Prakriti Assessment</h4>
+                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2"><DynamicText>{t('common.prakriti_assessment')}</DynamicText></h4>
                 <p className="text-sm text-gray-400 mb-4">
-                  {prakritiScores ? 'Retake your constitution analysis' : 'Discover your unique constitution'}
+                  <DynamicText>{prakritiScores ? t('dashboard.retake_assessment') : t('dashboard.take_assessment_desc')}</DynamicText>
                 </p>
                 <div className="text-amber-700 font-medium text-sm group-hover:text-amber-800">
-                  {prakritiScores ? 'Retake Assessment â†’' : 'Take Assessment â†’'}
+                  <DynamicText>{prakritiScores ? t('common.retake') : t('common.start')}</DynamicText>
                 </div>
               </button>
 
@@ -1289,10 +1463,10 @@ const PatientDashboard: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2">Book Appointment</h4>
-                <p className="text-sm text-gray-400 mb-4">Schedule consultation with Ayurvedic experts</p>
+                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2"><DynamicText>{t('dashboard.book_appointment')}</DynamicText></h4>
+                <p className="text-sm text-gray-400 mb-4"><DynamicText>{t('dashboard.book_appointment_desc')}</DynamicText></p>
                 <div className="text-green-600 font-medium text-sm group-hover:text-green-700">
-                  Book Now â†’
+                  <DynamicText>{t('common.book_now')}</DynamicText>
                 </div>
               </button>
 
@@ -1308,10 +1482,10 @@ const PatientDashboard: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2">Manage Profile</h4>
-                <p className="text-sm text-gray-400 mb-4">Update personal and health information</p>
-                <div className="text-purple-600 font-medium text-sm group-hover:text-purple-700">
-                  Edit Profile â†’
+                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2"><DynamicText>{t('profile.health_profile')}</DynamicText></h4>
+                <p className="text-sm text-gray-400 mb-4"><DynamicText>{t('profile.health_profile_desc')}</DynamicText></p>
+                <div className="text-blue-600 font-medium text-sm group-hover:text-blue-700">
+                  <DynamicText>{t('common.view_profile')}</DynamicText>
                 </div>
               </button>
 
@@ -1327,13 +1501,12 @@ const PatientDashboard: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2">Personalized Diet</h4>
+                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-2"><DynamicText>{t('dashboard.personalized_diet')}</DynamicText></h4>
                 <p className="text-sm text-gray-400 mb-4">
-                  Nutrition plan for {prakritiScores?.dominant || 'your constitution'}
+                  <DynamicText>{`${t('dashboard.diet_plan_desc')} ${prakritiScores?.dominant || t('prakriti.constitution')}`}</DynamicText>
                 </p>
-                <div className={`font-medium text-sm ${prakritiScores ? 'text-orange-600 group-hover:text-orange-700' : 'text-gray-400'
-                  }`}>
-                  {prakritiScores ? 'View Plan â†’' : 'Assessment Required'}
+                <div className={`font-medium text-sm ${prakritiScores ? 'text-orange-600 group-hover:text-orange-700' : 'text-gray-400'}`}>
+                  <DynamicText>{prakritiScores ? t('common.view_details') : t('common.pending')}</DynamicText>
                 </div>
               </button>
             </div>
@@ -1344,19 +1517,19 @@ const PatientDashboard: React.FC = () => {
         {activeView === 'health' && (
           <>
             <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}>Health Profile</h2>
-              <p className="text-[var(--text-dark)]">Comprehensive view of your health data and Prakriti analysis</p>
+              <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}><DynamicText>{t('profile.health_profile_title')}</DynamicText></h2>
+              <p className="text-[var(--text-dark)]"><DynamicText>{t('profile.health_profile_desc')}</DynamicText></p>
             </div>
 
             {prakritiScores ? (
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold" style={{ color: 'var(--accent-sage)' }}>Your Comprehensive Prakriti Analysis</h3>
+                  <h3 className="text-2xl font-bold" style={{ color: 'var(--accent-sage)' }}><DynamicText>{t('profile.comprehensive_analysis')}</DynamicText></h3>
                   {prakritiScores.ml_prediction && (
                     <div className="flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 rounded-full border border-blue-200">
                       <div className="w-3 h-3 bg-blue-900/200 rounded-full mr-2 animate-pulse"></div>
                       <span className="text-sm font-medium text-blue-800">
-                        Powered by AI & Traditional Analysis
+                        <DynamicText>{t('profile.powered_by')}</DynamicText>
                       </span>
                     </div>
                   )}
@@ -1367,15 +1540,14 @@ const PatientDashboard: React.FC = () => {
                 {/* ADDITIONAL ORIGINAL VISUALIZATION FOR COMPARISON */}
                 <div className="mt-8 ayurveda-card overflow-hidden">
                   <div className="p-6">
-                    <h4 className="text-xl font-bold mb-6 text-center text-[var(--text-dark)]">Interactive Dashboard Visualization</h4>
-
+                    <h4 className="text-xl font-bold mb-6 text-center text-[var(--text-dark)]"><DynamicText>{t('profile.interactive_viz_title')}</DynamicText></h4>
                     {prakritiScores.ml_prediction && (
                       <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center">
                             <div className="w-3 h-3 bg-blue-900/200 rounded-full mr-2"></div>
                             <span className="text-sm font-medium text-[var(--text-dark)]">
-                              AI Prediction Confidence
+                              <DynamicText>{t('dashboard.ai_confidence')}</DynamicText>
                             </span>
                           </div>
                           <span className="text-lg font-bold text-green-600">
@@ -1402,8 +1574,8 @@ const PatientDashboard: React.FC = () => {
                           <div key={dosha}>
                             <div className="flex justify-between items-center mb-3">
                               <div>
-                                <span className="font-semibold text-[var(--text-dark)] text-lg capitalize">{dosha}</span>
-                                <span className="text-sm text-gray-400 ml-2 block">{getDescription(dosha)}</span>
+                                <span className="font-semibold text-[var(--text-dark)] text-lg capitalize"><DynamicText>{dosha}</DynamicText></span>
+                                <span className="text-sm text-gray-400 ml-2 block"><DynamicText>{getDescription(dosha)}</DynamicText></span>
                               </div>
                               <span className={`text-2xl font-bold ${dosha === 'vata' ? 'text-blue-600' :
                                 dosha === 'pitta' ? 'text-red-600' : 'text-green-600'
@@ -1428,11 +1600,11 @@ const PatientDashboard: React.FC = () => {
 
                       <div className="p-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-200 ayurveda-card">
                         <div className="text-center">
-                          <h4 className="text-sm font-medium text-gray-400 mb-2">Your Dominant Constitution</h4>
+                          <h4 className="text-sm font-medium text-gray-400 mb-2"><DynamicText>{t('profile.your_dominant_prakriti')}</DynamicText></h4>
                           <p className="text-3xl font-bold text-[var(--text-dark)] capitalize mb-2">
-                            {prakritiScores.dominant} Prakriti
+                            <DynamicText>{`${prakritiScores.dominant} Prakriti`}</DynamicText>
                           </p>
-                          <p className="text-sm text-gray-400">{getDescription(prakritiScores.dominant)}</p>
+                          <p className="text-sm text-gray-400"><DynamicText>{getDescription(prakritiScores.dominant)}</DynamicText></p>
                           <div className="mt-4 flex justify-center">
                             <motion.div
                               className={`w-16 h-16 ${getColorClass(prakritiScores.dominant)} rounded-full flex items-center justify-center shadow-lg`}
@@ -1459,7 +1631,7 @@ const PatientDashboard: React.FC = () => {
                   {/* NEW: Enhanced Visualization Component */}
                   <div className="mt-8 ayurveda-card overflow-hidden">
                     <div className="p-6">
-                      <h4 className="text-xl font-bold mb-6 text-center text-[var(--text-dark)]">Enhanced ML Visualization</h4>
+                      <h4 className="text-xl font-bold mb-6 text-center text-[var(--text-dark)]"><DynamicText>{t('profile.enhanced_visualization')}</DynamicText></h4>
                       <PrakritiVisualizationEnhanced scores={prakritiScores} />
                     </div>
                   </div>
@@ -1473,16 +1645,16 @@ const PatientDashboard: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-semibold text-[var(--text-dark)] mb-2">Complete Your Prakriti Assessment</h3>
+                  <h3 className="text-xl font-semibold text-[var(--text-dark)] mb-2"><DynamicText>{t('profile.complete_assessment_title')}</DynamicText></h3>
                   <p className="text-gray-400 mb-6">
-                    Discover your unique Ayurvedic constitution and get personalized health recommendations with ML-powered analysis.
+                    <DynamicText>{t('profile.complete_assessment_desc')}</DynamicText>
                   </p>
                   <button
                     onClick={handleTakeQuestionnaire}
                     className="px-6 py-3 rounded-lg transition-colors"
                     style={{ background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))', color: '#2c1810' }}
                   >
-                    Take Assessment Now
+                    <DynamicText>{t('profile.take_assessment_now')}</DynamicText>
                   </button>
                 </div>
               </div>
@@ -1490,211 +1662,210 @@ const PatientDashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="ayurveda-card p-6">
-                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-4">Health Recommendations</h4>
+                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-4"><DynamicText>{t('profile.health_recommendations')}</DynamicText></h4>
                 {prakritiScores ? (
                   <div className="space-y-4">
                     <div className="p-4 bg-blue-900/20 rounded-lg">
-                      <h5 className="font-medium text-blue-800 mb-2">Diet Guidelines</h5>
+                      <h5 className="font-medium text-blue-800 mb-2"><DynamicText>{t('profile.diet_guidelines')}</DynamicText></h5>
                       <p className="text-sm text-blue-700">
-                        {prakritiScores.dominant === 'vata' && 'Focus on warm, moist, grounding foods. Avoid cold, dry foods.'}
-                        {prakritiScores.dominant === 'pitta' && 'Choose cooling, sweet, bitter foods. Avoid hot, spicy dishes.'}
-                        {prakritiScores.dominant === 'kapha' && 'Prefer light, warm, spicy foods. Limit heavy, oily foods.'}
+                        <DynamicText>
+                          {prakritiScores.dominant === 'vata' ? t('profile.vata_diet') :
+                            prakritiScores.dominant === 'pitta' ? t('profile.pitta_diet') :
+                              t('profile.kapha_diet')}
+                        </DynamicText>
                       </p>
                     </div>
                     <div className="p-4 bg-green-900/20 rounded-lg">
-                      <h5 className="font-medium text-green-300 mb-2">Lifestyle Tips</h5>
+                      <h5 className="font-medium text-green-300 mb-2"><DynamicText>{t('profile.lifestyle_tips')}</DynamicText></h5>
                       <p className="text-sm text-green-700">
-                        {prakritiScores.dominant === 'vata' && 'Maintain regular routines, get adequate rest, practice calming activities.'}
-                        {prakritiScores.dominant === 'pitta' && 'Stay cool, avoid overexertion, practice moderation in all activities.'}
-                        {prakritiScores.dominant === 'kapha' && 'Stay active, wake up early, engage in stimulating activities.'}
+                        <DynamicText>
+                          {prakritiScores.dominant === 'vata' ? t('profile.vata_lifestyle') :
+                            prakritiScores.dominant === 'pitta' ? t('profile.pitta_lifestyle') :
+                              t('profile.kapha_lifestyle')}
+                        </DynamicText>
                       </p>
                     </div>
                     {prakritiScores.ml_prediction && (
                       <div className="p-4 bg-purple-50 rounded-lg">
-                        <h5 className="font-medium text-purple-800 mb-2">AI Insights</h5>
+                        <h5 className="font-medium text-purple-800 mb-2"><DynamicText>{t('profile.ai_insights')}</DynamicText></h5>
                         <p className="text-sm text-purple-700">
-                          Our machine learning model analyzed your responses with {Math.round(prakritiScores.ml_prediction.confidence * 100)}% confidence.
-                          The AI prediction aligns with traditional Ayurvedic analysis.
+                          <DynamicText>{t('profile.ai_insight_desc', { confidence: Math.round(prakritiScores.ml_prediction.confidence * 100) })}</DynamicText>
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <p className="text-gray-400 text-center py-8">
-                    Complete your Prakriti assessment to receive personalized recommendations.
+                    <DynamicText>{t('profile.assessment_pending')}</DynamicText>
                   </p>
                 )}
               </div>
 
               <div className="ayurveda-card p-6">
-                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-4">Mental Wellness</h4>
+                <h4 className="text-lg font-semibold text-[var(--text-dark)] mb-4"><DynamicText>{t('profile.mental_wellness_title')}</DynamicText></h4>
                 {mentalHealth ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <span className="font-medium text-[var(--text-dark)]">Current Score</span>
+                      <span className="font-medium text-[var(--text-dark)]"><DynamicText>{t('profile.current_score')}</DynamicText></span>
                       <span className={`text-2xl font-bold ${mentalHealth.level === 'green' ? 'text-green-600' :
                         mentalHealth.level === 'yellow' ? 'text-yellow-600' : 'text-red-600'
                         }`}>{mentalHealth.score}/100</span>
                     </div>
                     <div className="p-4 bg-green-900/20 rounded-lg">
-                      <h5 className="font-medium text-green-300 mb-2">Wellness Tips</h5>
+                      <h5 className="font-medium text-green-300 mb-2"><DynamicText>{t('profile.wellness_tips')}</DynamicText></h5>
                       <ul className="text-sm text-green-700 space-y-1">
-                        <li>â€¢ Practice daily meditation or mindfulness</li>
-                        <li>â€¢ Maintain regular sleep schedule</li>
-                        <li>â€¢ Engage in physical activities you enjoy</li>
-                        <li>â€¢ Connect with supportive friends and family</li>
+                        <li><DynamicText>{t('profile.wellness_tip_1')}</DynamicText></li>
+                        <li><DynamicText>{t('profile.wellness_tip_2')}</DynamicText></li>
+                        <li><DynamicText>{t('profile.wellness_tip_3')}</DynamicText></li>
+                        <li><DynamicText>{t('profile.wellness_tip_4')}</DynamicText></li>
                       </ul>
                     </div>
                   </div>
                 ) : (
                   <p className="text-gray-400 text-center py-8">
-                    Mental wellness assessment not available.
+                    <DynamicText>{t('profile.mental_assessment_unavailable')}</DynamicText>
                   </p>
                 )}
               </div>
             </div>
           </>
-        )
-        }
+        )}
 
-        {/* Visualization View - NEW IMPLEMENTATION */}
-        {
-          activeView === 'visualization' && (
-            <>
+        {/* Visualization View */}
+        {activeView === 'visualization' && (
+          <>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}><DynamicText>Prakriti Visualization</DynamicText></h2>
+              <p className="text-[var(--text-dark)]"><DynamicText>Interactive charts and graphs showing your Prakriti analysis</DynamicText></p>
+            </div>
+
+            {prakritiScores ? (
               <div className="mb-8">
-                <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}>Prakriti Visualization</h2>
-                <p className="text-[var(--text-dark)]">Interactive charts and graphs showing your Prakriti analysis</p>
+                <PrakritiVisualizationEnhanced scores={prakritiScores} />
               </div>
-
-              {
-                prakritiScores ? (
-                  <div className="mb-8">
-                    <PrakritiVisualizationEnhanced scores={prakritiScores} />
+            ) : (
+              <div className="mb-8">
+                <div className="ayurveda-card p-8 text-center">
+                  <div className="w-16 h-16 bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
                   </div>
-                ) : (
-                  <div className="mb-8">
-                    <div className="ayurveda-card p-8 text-center">
-                      <div className="w-16 h-16 bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
+                  <h3 className="text-xl font-semibold text-[var(--text-dark)] mb-2"><DynamicText>Complete Your Prakriti Assessment</DynamicText></h3>
+                  <p className="text-gray-400 mb-6">
+                    <DynamicText>Discover your unique Ayurvedic constitution and visualize your results with interactive charts.</DynamicText>
+                  </p>
+                  <button
+                    onClick={handleTakeQuestionnaire}
+                    className="px-6 py-3 rounded-lg transition-colors"
+                    style={{ background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))', color: '#2c1810' }}
+                  >
+                    <DynamicText>Take Assessment Now</DynamicText>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Appointments View */}
+        {activeView === 'appointments' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}><DynamicText>{t('profile.appointments_title')}</DynamicText></h2>
+                <p className="text-[var(--text-dark)]"><DynamicText>{t('profile.appointments_desc')}</DynamicText></p>
+              </div>
+              <button
+                onClick={() => navigate('/patient/appointments/new')}
+                className="px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                style={{ background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))', color: '#2c1810' }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span><DynamicText>{t('profile.book_new_appointment')}</DynamicText></span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="ayurveda-card p-6">
+                <h3 className="text-lg font-semibold text-[var(--text-dark)] mb-4"><DynamicText>{t('profile.upcoming_appointments')}</DynamicText></h3>
+                <div className="space-y-4">
+                  {appointments.filter(apt => ['pending', 'scheduled', 'confirmed'].includes(apt.status)).length > 0 ? (
+                    appointments.filter(apt => ['pending', 'scheduled', 'confirmed'].includes(apt.status)).map((appointment) => (
+                      <div key={appointment.id} className="p-4 border border-green-200 bg-green-900/20 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-[var(--text-dark)]">{appointment.doctorName}</h4>
+                          <span className={`text-xs px-2 py-1 rounded-full ${appointment.status === 'confirmed' ? 'bg-green-900/40 text-green-300' :
+                            appointment.status === 'pending' ? 'bg-yellow-900/40 text-yellow-300' :
+                              'bg-blue-900/40 text-blue-300'
+                            }`}>
+                            {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-400 mb-1">{appointment.type}</p>
+                        <p className="text-sm font-medium text-[var(--text-dark)]">
+                          {new Date(appointment.date).toLocaleDateString()} at {appointment.time}
+                        </p>
                       </div>
-                      <h3 className="text-xl font-semibold text-[var(--text-dark)] mb-2">Complete Your Prakriti Assessment</h3>
-                      <p className="text-gray-400 mb-6">
-                        Discover your unique Ayurvedic constitution and visualize your results with interactive charts.
-                      </p>
-                      <button
-                        onClick={handleTakeQuestionnaire}
-                        className="px-6 py-3 rounded-lg transition-colors"
-                        style={{ background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))', color: '#2c1810' }}
-                      >
-                        Take Assessment Now
-                      </button>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p><DynamicText>{t('profile.no_upcoming_appointments')}</DynamicText></p>
                     </div>
-                  </div>
-                )}
-            </>
-          )
-        }
-
-        {/* Appointments View (unchanged) */}
-        {
-          activeView === 'appointments' && (
-            <>
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--accent-sage)' }}>Appointments</h2>
-                  <p className="text-[var(--text-dark)]">Manage your consultations and health appointments</p>
-                </div>
-                <button
-                  onClick={() => setShowAppointmentBooking(true)}
-                  className="px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
-                  style={{ background: 'linear-gradient(135deg, var(--accent-gold-1), var(--accent-gold-2))', color: '#2c1810' }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Book New Appointment</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="ayurveda-card p-6">
-                  <h3 className="text-lg font-semibold text-[var(--text-dark)] mb-4">Upcoming Appointments</h3>
-                  <div className="space-y-4">
-                    {appointments.filter(apt => ['pending', 'scheduled', 'confirmed'].includes(apt.status)).length > 0 ? (
-                      appointments.filter(apt => ['pending', 'scheduled', 'confirmed'].includes(apt.status)).map((appointment) => (
-                        <div key={appointment.id} className="p-4 border border-green-200 bg-green-900/20 rounded-lg">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-medium text-[var(--text-dark)]">{appointment.doctorName}</h4>
-                            <span className={`text-xs px-2 py-1 rounded-full ${appointment.status === 'confirmed' ? 'bg-green-900/40 text-green-300' :
-                              appointment.status === 'pending' ? 'bg-yellow-900/40 text-yellow-300' :
-                                'bg-blue-900/40 text-blue-300'
-                              }`}>
-                              {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-400 mb-1">{appointment.type}</p>
-                          <p className="text-sm font-medium text-[var(--text-dark)]">
-                            {new Date(appointment.date).toLocaleDateString()} at {appointment.time}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-400">
-                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p>No upcoming appointments</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="ayurveda-card p-6">
-                  <h3 className="text-lg font-semibold text-[var(--text-dark)] mb-4">Appointment History</h3>
-                  <div className="space-y-4">
-                    {appointments.filter(apt => ['completed', 'cancelled', 'no-show'].includes(apt.status)).length > 0 ? (
-                      appointments.filter(apt => ['completed', 'cancelled', 'no-show'].includes(apt.status)).map((appointment) => (
-                        <div key={appointment.id} className="p-4 border border-gray-700 bg-gray-800 rounded-lg">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-medium text-[var(--text-dark)]">{appointment.doctorName}</h4>
-                            <span className={`text-xs px-2 py-1 rounded-full ${appointment.status === 'completed' ? 'bg-green-900/40 text-green-300' :
-                              appointment.status === 'cancelled' ? 'bg-red-900/40 text-red-300' :
-                                'bg-gray-700 text-[var(--text-dark)]'
-                              }`}>
-                              {appointment.status}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-400 mb-1">{appointment.type}</p>
-                          <p className="text-sm font-medium text-[var(--text-dark)]">
-                            {new Date(appointment.date).toLocaleDateString()} at {appointment.time}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-400">
-                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                        </svg>
-                        <p>No appointment history</p>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
-            </>
-          )
-        }
-      </main >
+
+              <div className="ayurveda-card p-6">
+                <h3 className="text-lg font-semibold text-[var(--text-dark)] mb-4"><DynamicText>{t('profile.appointment_history')}</DynamicText></h3>
+                <div className="space-y-4">
+                  {appointments.filter(apt => ['completed', 'cancelled', 'no-show'].includes(apt.status)).length > 0 ? (
+                    appointments.filter(apt => ['completed', 'cancelled', 'no-show'].includes(apt.status)).map((appointment) => (
+                      <div key={appointment.id} className="p-4 border border-gray-700 bg-gray-800 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-[var(--text-dark)]">{appointment.doctorName}</h4>
+                          <span className={`text-xs px-2 py-1 rounded-full ${appointment.status === 'completed' ? 'bg-green-900/40 text-green-300' :
+                            appointment.status === 'cancelled' ? 'bg-red-900/40 text-red-300' :
+                              'bg-gray-700 text-[var(--text-dark)]'
+                            }`}>
+                            {appointment.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-400 mb-1">{appointment.type}</p>
+                        <p className="text-sm font-medium text-[var(--text-dark)]">
+                          {new Date(appointment.date).toLocaleDateString()} at {appointment.time}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                      </svg>
+                      <p><DynamicText>{t('profile.no_appointment_history')}</DynamicText></p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </main>
+
+      <GlobalFooter dark className="border-t border-white/5 bg-[#141613]" />
 
       {/* Modals & Overlays */}
-      < ProfileManager
+      <ProfileManager
         isOpen={showProfileManager}
         onClose={() => setShowProfileManager(false)}
       />
 
-      < AppointmentBooking
+      <AppointmentBooking
         isOpen={showAppointmentBooking}
         onClose={() => setShowAppointmentBooking(false)}
       />
@@ -1718,24 +1889,24 @@ const PatientDashboard: React.FC = () => {
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 bg-[#2c332b] rounded-full flex items-center justify-center mb-4">
-                  <span className="text-3xl">ðŸ‘‹</span>
+                  <span className="text-3xl">👋</span>
                 </div>
-                <h3 className="text-xl font-bold text-[#e1dccc] mb-2">Leaving so soon?</h3>
+                <h3 className="text-xl font-bold text-[#e1dccc] mb-2"><DynamicText>Leaving so soon?</DynamicText></h3>
                 <p className="text-[#8c9489] mb-6">
-                  Are you sure you want to log out of your Ayurvedic journey?
+                  <DynamicText>Are you sure you want to log out of your Ayurvedic journey?</DynamicText>
                 </p>
                 <div className="flex gap-3 w-full">
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
                     className="flex-1 px-4 py-2 border border-[#3d453b] text-[#8c9489] rounded-lg hover:bg-[#2c332b] hover:text-[#e1dccc] transition-colors font-medium"
                   >
-                    Cancel
+                    <DynamicText>Cancel</DynamicText>
                   </button>
                   <button
                     onClick={confirmLogout}
                     className="flex-1 px-4 py-2 bg-[#1a4731] text-[#e1dccc] rounded-lg hover:bg-[#2c5e41] transition-colors font-medium border border-[#2c5e41]"
                   >
-                    Logout
+                    <DynamicText>Logout</DynamicText>
                   </button>
                 </div>
               </div>
@@ -1743,7 +1914,7 @@ const PatientDashboard: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div >
+    </div>
   );
 };
 

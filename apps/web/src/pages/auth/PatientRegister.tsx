@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 interface RegistrationData {
   firstName: string;
@@ -705,6 +706,7 @@ const PatientRegister: React.FC = () => {
           </form>
         </div>
       </div>
+      <GlobalFooter className="border-t border-slate-200/50 bg-white" />
     </div>
   );
 };

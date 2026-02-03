@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import NutritionDashboard from './NutritionDashboard';
 import './NutritionDashboard.css';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Patient {
   id: string;
@@ -23,7 +24,10 @@ interface DietRecommendation {
   recommendation_type: string;
 }
 
+
+
 const PractitionerNutritionManager: React.FC = () => {
+  const { t } = useLanguage();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [dietRecommendations, setDietRecommendations] = useState<DietRecommendation[]>([]);
@@ -58,14 +62,14 @@ const PractitionerNutritionManager: React.FC = () => {
         .limit(50);
 
       if (error) throw error;
-      
+
       const formattedPatients = (data || []).map(patient => ({
         id: patient.id,
         first_name: patient.first_name || '',
         last_name: patient.last_name || '',
         prakriti_type: patient.prakriti_assessment || ''
       }));
-      
+
       setPatients(formattedPatients);
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -117,10 +121,10 @@ const PractitionerNutritionManager: React.FC = () => {
         .select();
 
       if (error) throw error;
-      
+
       // Refresh recommendations
       fetchPatientDietRecommendations();
-      
+
       // Reset form
       setNewRecommendation({
         recommendations: [''],
@@ -129,11 +133,11 @@ const PractitionerNutritionManager: React.FC = () => {
         meal_timing: '',
         notes: ''
       });
-      
-      alert('Recommendation saved successfully!');
+
+      alert(t('nutrition.rec_saved'));
     } catch (error) {
       console.error('Error saving recommendation:', error);
-      alert('Failed to save recommendation');
+      alert(t('nutrition.rec_save_failed'));
     } finally {
       setSaving(false);
     }
@@ -200,7 +204,7 @@ const PractitionerNutritionManager: React.FC = () => {
     <div className="container py-4">
       <div className="row">
         <div className="col-12">
-          <h2 className="mb-4">Nutrition Management</h2>
+          <h2 className="mb-4">{t('nutrition.management_title')}</h2>
         </div>
       </div>
 
@@ -209,7 +213,7 @@ const PractitionerNutritionManager: React.FC = () => {
         <div className="col-md-6">
           <div className="card">
             <div className="card-header">
-              <h5 className="mb-0">Select Patient</h5>
+              <h5 className="mb-0">{t('nutrition.select_patient')}</h5>
             </div>
             <div className="card-body">
               <select
@@ -217,7 +221,7 @@ const PractitionerNutritionManager: React.FC = () => {
                 value={selectedPatient}
                 onChange={(e) => setSelectedPatient(e.target.value)}
               >
-                <option value="">Select a patient</option>
+                <option value="">{t('nutrition.select_patient_placeholder')}</option>
                 {patients.map((patient) => (
                   <option key={patient.id} value={patient.id}>
                     {patient.first_name} {patient.last_name} {patient.prakriti_type && `(${patient.prakriti_type})`}
@@ -240,7 +244,7 @@ const PractitionerNutritionManager: React.FC = () => {
                     className={`nav-link ${activeTab === 'recommendations' ? 'active' : ''}`}
                     onClick={() => setActiveTab('recommendations')}
                   >
-                    Create Recommendations
+                    {t('nutrition.create_recs')}
                   </button>
                 </li>
                 <li className="nav-item">
@@ -248,7 +252,7 @@ const PractitionerNutritionManager: React.FC = () => {
                     className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
                     onClick={() => setActiveTab('dashboard')}
                   >
-                    Nutrition Dashboard
+                    {t('nutrition.dashboard_tab')}
                   </button>
                 </li>
                 <li className="nav-item">
@@ -256,7 +260,7 @@ const PractitionerNutritionManager: React.FC = () => {
                     className={`nav-link ${activeTab === 'history' ? 'active' : ''}`}
                     onClick={() => setActiveTab('history')}
                   >
-                    Patient History
+                    {t('nutrition.history_tab')}
                   </button>
                 </li>
               </ul>
@@ -269,12 +273,12 @@ const PractitionerNutritionManager: React.FC = () => {
               <div className="col-12">
                 <div className="card">
                   <div className="card-header">
-                    <h5 className="mb-0">Create New Nutrition Recommendation</h5>
+                    <h5 className="mb-0">{t('nutrition.create_rec_title')}</h5>
                   </div>
                   <div className="card-body">
                     {/* General Recommendations */}
                     <div className="mb-4">
-                      <label className="form-label fw-bold">General Recommendations</label>
+                      <label className="form-label fw-bold">{t('nutrition.gen_recs')}</label>
                       {newRecommendation.recommendations.map((rec, index) => (
                         <div className="mb-2" key={index}>
                           <input
@@ -286,18 +290,18 @@ const PractitionerNutritionManager: React.FC = () => {
                           />
                         </div>
                       ))}
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-outline-primary btn-sm"
                         onClick={addRecommendationField}
                       >
-                        + Add Recommendation
+                        + {t('nutrition.add_rec')}
                       </button>
                     </div>
 
                     {/* Foods to Favor */}
                     <div className="mb-4">
-                      <label className="form-label fw-bold">Foods to Favor</label>
+                      <label className="form-label fw-bold">{t('nutrition.foods_favor')}</label>
                       {newRecommendation.foods_to_favor.map((food, index) => (
                         <div className="mb-2" key={index}>
                           <input
@@ -309,18 +313,18 @@ const PractitionerNutritionManager: React.FC = () => {
                           />
                         </div>
                       ))}
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-outline-primary btn-sm"
                         onClick={addFavorFoodField}
                       >
-                        + Add Food
+                        + {t('nutrition.add_food')}
                       </button>
                     </div>
 
                     {/* Foods to Avoid */}
                     <div className="mb-4">
-                      <label className="form-label fw-bold">Foods to Avoid</label>
+                      <label className="form-label fw-bold">{t('nutrition.foods_avoid')}</label>
                       {newRecommendation.foods_to_avoid.map((food, index) => (
                         <div className="mb-2" key={index}>
                           <input
@@ -332,22 +336,22 @@ const PractitionerNutritionManager: React.FC = () => {
                           />
                         </div>
                       ))}
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-outline-primary btn-sm"
                         onClick={addAvoidFoodField}
                       >
-                        + Add Food
+                        + {t('nutrition.add_food')}
                       </button>
                     </div>
 
                     {/* Meal Timing */}
                     <div className="mb-4">
-                      <label className="form-label fw-bold">Meal Timing Guidelines</label>
+                      <label className="form-label fw-bold">{t('nutrition.meal_timing_guidelines')}</label>
                       <textarea
                         className="form-control"
                         rows={3}
-                        placeholder="Enter meal timing recommendations..."
+                        placeholder={t('nutrition.meal_timing_placeholder')}
                         value={newRecommendation.meal_timing}
                         onChange={(e) => setNewRecommendation(prev => ({ ...prev, meal_timing: e.target.value }))}
                       ></textarea>
@@ -355,11 +359,11 @@ const PractitionerNutritionManager: React.FC = () => {
 
                     {/* Notes */}
                     <div className="mb-4">
-                      <label className="form-label fw-bold">Additional Notes</label>
+                      <label className="form-label fw-bold">{t('nutrition.additional_notes')}</label>
                       <textarea
                         className="form-control"
                         rows={2}
-                        placeholder="Any additional notes..."
+                        placeholder={t('nutrition.notes_placeholder')}
                         value={newRecommendation.notes}
                         onChange={(e) => setNewRecommendation(prev => ({ ...prev, notes: e.target.value }))}
                       ></textarea>
@@ -370,7 +374,7 @@ const PractitionerNutritionManager: React.FC = () => {
                       onClick={handleSaveRecommendation}
                       disabled={saving}
                     >
-                      {saving ? 'Saving...' : 'Save Recommendation'}
+                      {saving ? t('common.saving') : t('nutrition.save_rec')}
                     </button>
                   </div>
                 </div>
@@ -384,7 +388,7 @@ const PractitionerNutritionManager: React.FC = () => {
               <div className="col-12">
                 <div className="card">
                   <div className="card-header">
-                    <h5 className="mb-0">Patient Nutrition Dashboard</h5>
+                    <h5 className="mb-0">{t('nutrition.patient_dashboard')}</h5>
                   </div>
                   <div className="card-body">
                     <NutritionDashboard />
@@ -400,7 +404,7 @@ const PractitionerNutritionManager: React.FC = () => {
               <div className="col-12">
                 <div className="card">
                   <div className="card-header">
-                    <h5 className="mb-0">Patient Diet History</h5>
+                    <h5 className="mb-0">{t('nutrition.diet_history')}</h5>
                   </div>
                   <div className="card-body">
                     {dietRecommendations.length > 0 ? (
@@ -408,10 +412,10 @@ const PractitionerNutritionManager: React.FC = () => {
                         <table className="table table-striped">
                           <thead>
                             <tr>
-                              <th>Date</th>
-                              <th>Prakriti Type</th>
-                              <th>Type</th>
-                              <th>Recommendations</th>
+                              <th>{t('common.date')}</th>
+                              <th>{t('prakriti.type')}</th>
+                              <th>{t('common.type')}</th>
+                              <th>{t('nutrition.recommendation')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -425,7 +429,7 @@ const PractitionerNutritionManager: React.FC = () => {
                                     <div key={idx} className="small">{rec}</div>
                                   ))}
                                   {rec.recommendations && rec.recommendations.length > 2 && (
-                                    <div className="small text-muted">+{rec.recommendations.length - 2} more</div>
+                                    <div className="small text-muted">+{rec.recommendations.length - 2} {t('common.more')}</div>
                                   )}
                                 </td>
                               </tr>
@@ -434,7 +438,7 @@ const PractitionerNutritionManager: React.FC = () => {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-muted">No diet recommendations found for this patient.</p>
+                      <p className="text-muted">{t('nutrition.no_recs_found')}</p>
                     )}
                   </div>
                 </div>
@@ -448,7 +452,7 @@ const PractitionerNutritionManager: React.FC = () => {
         <div className="row">
           <div className="col-12">
             <div className="alert alert-info">
-              Please select a patient to view and manage their nutrition recommendations.
+              {t('nutrition.select_patient_alert')}
             </div>
           </div>
         </div>

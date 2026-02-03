@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useLanguage } from '../context/LanguageContext';
+import DynamicText from './DynamicText';
 import {
   BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -50,6 +52,7 @@ const demoScores: PrakritiScores = {
 };
 
 const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
+  const { t } = useLanguage();
   const [activeChart, setActiveChart] = useState('pie');
   const prakritiScores = scores || demoScores;
 
@@ -168,10 +171,10 @@ const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
                   animate={{ scale: [1, 1.5, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                <span className="font-semibold" style={{ color: '#e1dccc' }}>AI-Powered Prakriti Analysis</span>
+                <span className="font-semibold" style={{ color: '#e1dccc' }}><DynamicText>AI-Powered Prakriti Analysis</DynamicText></span>
               </div>
               <span className="font-bold text-lg" style={{ color: '#6EE7B7' }}>
-                {Math.round(prakritiScores.ml_prediction.confidence * 100)}% Confidence
+                <DynamicText>{`${Math.round(prakritiScores.ml_prediction.confidence * 100)}% Confidence`}</DynamicText>
               </span>
             </div>
             <div className="w-full bg-gray-300/20 rounded-full h-2 mt-3">
@@ -224,7 +227,7 @@ const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
               className="h-96"
             >
               <h3 className="text-2xl font-bold text-center mb-6" style={{ color: '#e1dccc' }}>
-                Prakriti Distribution
+                <DynamicText>Prakriti Distribution</DynamicText>
               </h3>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -310,7 +313,7 @@ const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
               className="h-96"
             >
               <h3 className="text-2xl font-bold text-center mb-6" style={{ color: '#e1dccc' }}>
-                Constitution Progression Over Time
+                <DynamicText>Constitution Progression Over Time</DynamicText>
               </h3>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timelineData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
@@ -336,7 +339,7 @@ const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
               className="space-y-6"
             >
               <h3 className="text-2xl font-bold text-center mb-6" style={{ color: '#e1dccc' }}>
-                Comprehensive Analysis
+                <DynamicText>Comprehensive Analysis</DynamicText>
               </h3>
 
               {/* Dominant Dosha */}
@@ -344,7 +347,7 @@ const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
                 background: '#1a1c19',
                 borderColor: '#2c332b'
               }}>
-                <h4 className="text-sm font-medium mb-3" style={{ color: '#a3b18a' }}>YOUR DOMINANT CONSTITUTION</h4>
+                <h4 className="text-sm font-medium mb-3" style={{ color: '#a3b18a' }}><DynamicText>YOUR DOMINANT CONSTITUTION</DynamicText></h4>
                 <div className="flex items-center gap-4">
                   <motion.div
                     className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold"
@@ -484,12 +487,14 @@ const PrakritiVisualizationEnhanced: React.FC<Props> = ({ scores }) => {
 
         {/* Info Section */}
         <GlassCard className="mt-8">
-          <h4 className="text-lg font-bold mb-3" style={{ color: '#e1dccc' }}>📚 About Your Results</h4>
+          <h4 className="text-lg font-bold mb-3" style={{ color: '#e1dccc' }}><DynamicText>📚 About Your Results</DynamicText></h4>
           <p style={{ color: '#8c9489' }} className="leading-relaxed">
-            Your Prakriti analysis combines traditional Ayurvedic principles with machine learning technology.
-            The percentages represent the balance of each dosha in your constitution. Most individuals have a dominant
-            dosha with secondary influences from the other two. Understanding your Prakriti helps guide lifestyle, diet,
-            and wellness recommendations tailored specifically to you.
+            <DynamicText>
+              Your Prakriti analysis combines traditional Ayurvedic principles with machine learning technology.
+              The percentages represent the balance of each dosha in your constitution. Most individuals have a dominant
+              dosha with secondary influences from the other two. Understanding your Prakriti helps guide lifestyle, diet,
+              and wellness recommendations tailored specifically to you.
+            </DynamicText>
           </p>
         </GlassCard>
       </div>

@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageSelector } from '../../components/LanguageSelector';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -292,6 +293,7 @@ const Login = () => {
                         )}
                     </form>
                 </div>
+                <GlobalFooter className="absolute bottom-4 z-50 text-stone-400" />
             </div>
         </div>
     );

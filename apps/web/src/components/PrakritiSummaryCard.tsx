@@ -1,6 +1,8 @@
 // apps/web/src/components/PrakritiSummaryCard.tsx - COMPLETE UPDATED VERSION
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLanguage } from '../context/LanguageContext';
+import DynamicText from './DynamicText';
 
 export interface PrakritiScores {
   vata: number;
@@ -25,6 +27,7 @@ export interface Props {
 }
 
 const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('analysis');
 
   const getColorClass = (type: string) => {
@@ -63,12 +66,12 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
   const CustomPieChart: React.FC<{ scores: PrakritiScores }> = ({ scores }) => {
     const radius = 90;
     const circumference = 2 * Math.PI * radius;
-    
+
     // Calculate stroke lengths
     const vataLength = (scores.percent.vata / 100) * circumference;
     const pittaLength = (scores.percent.pitta / 100) * circumference;
     const kaphaLength = (scores.percent.kapha / 100) * circumference;
-    
+
     // Calculate offsets for stacking
     const vataOffset = 0;
     const pittaOffset = -vataLength;
@@ -87,7 +90,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               stroke="#f3f4f6"
               strokeWidth="20"
             />
-            
+
             {/* Vata arc */}
             <motion.circle
               cx="100"
@@ -98,13 +101,13 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               strokeWidth="18"
               strokeLinecap="round"
               initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: 0 }}
-              animate={{ 
+              animate={{
                 strokeDasharray: `${vataLength} ${circumference}`,
                 strokeDashoffset: vataOffset
               }}
               transition={{ duration: 1, ease: 'easeOut' }}
             />
-            
+
             {/* Pitta arc */}
             <motion.circle
               cx="100"
@@ -115,13 +118,13 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               strokeWidth="18"
               strokeLinecap="round"
               initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: 0 }}
-              animate={{ 
+              animate={{
                 strokeDasharray: `${pittaLength} ${circumference}`,
                 strokeDashoffset: pittaOffset
               }}
               transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
             />
-            
+
             {/* Kapha arc */}
             <motion.circle
               cx="100"
@@ -132,7 +135,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               strokeWidth="18"
               strokeLinecap="round"
               initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: 0 }}
-              animate={{ 
+              animate={{
                 strokeDasharray: `${kaphaLength} ${circumference}`,
                 strokeDashoffset: kaphaOffset
               }}
@@ -161,20 +164,20 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               style={{ transformOrigin: '50% 50%' }}
             />
           </svg>
-          
+
           {/* Center text */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div 
+            <motion.div
               className="text-center bg-white rounded-full w-20 h-20 flex flex-col items-center justify-center shadow-lg border-2 border-gray-100"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
             >
               <div className="text-xl font-bold text-gray-800 capitalize">
-                {scores.ml_prediction ? scores.ml_prediction.predicted : scores.dominant}
+                <DynamicText>{scores.ml_prediction ? scores.ml_prediction.predicted : scores.dominant}</DynamicText>
               </div>
               <div className="text-xs text-gray-600">
-                {scores.ml_prediction ? 'AI Prediction' : 'Traditional'}
+                <DynamicText>{scores.ml_prediction ? 'AI Prediction' : 'Traditional'}</DynamicText>
               </div>
             </motion.div>
           </div>
@@ -200,7 +203,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               {/* 3D Bar */}
               <motion.div
                 className="relative"
-                style={{ 
+                style={{
                   width: 60,
                   background: `linear-gradient(135deg, ${bar.color}, ${bar.color}dd)`
                 }}
@@ -209,16 +212,16 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                 transition={{ duration: 1.2, delay: index * 0.2, ease: 'easeOut' }}
               >
                 {/* 3D effect - top */}
-                <div 
+                <div
                   className="absolute -top-2 left-0 w-full h-4"
                   style={{
                     background: `linear-gradient(45deg, ${bar.color}ee, ${bar.color}bb)`,
                     transform: 'skewX(-45deg) scaleY(0.5)'
                   }}
                 />
-                
+
                 {/* 3D effect - right side */}
-                <div 
+                <div
                   className="absolute top-0 -right-2 w-4 h-full"
                   style={{
                     background: `linear-gradient(135deg, ${bar.color}cc, ${bar.color}99)`,
@@ -227,7 +230,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                 />
 
                 {/* Percentage label */}
-                <motion.div 
+                <motion.div
                   className="absolute inset-0 flex items-center justify-center text-white font-bold text-sm"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -240,8 +243,8 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
 
             {/* Label */}
             <div className="mt-4 text-center">
-              <div className="font-semibold text-gray-800">{bar.label}</div>
-              <div className="text-xs text-gray-600 mt-1">{getDescription(bar.key)}</div>
+              <div className="font-semibold text-gray-800"><DynamicText>{bar.label}</DynamicText></div>
+              <div className="text-xs text-gray-600 mt-1"><DynamicText>{getDescription(bar.key)}</DynamicText></div>
             </div>
           </div>
         ))}
@@ -256,34 +259,31 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
         <nav className="-mb-px flex">
           <button
             onClick={() => setActiveTab('analysis')}
-            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'analysis'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analysis'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
-            Prakriti Analysis
+            <DynamicText>{t('prakriti.analysis')}</DynamicText>
           </button>
           <button
             onClick={() => setActiveTab('charts')}
-            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'charts'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
-            Visual Charts
+            <DynamicText>{t('dashboard.visual_charts')}</DynamicText>
           </button>
           {therapyRecommendations && (
             <button
               onClick={() => setActiveTab('therapies')}
-              className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'therapies'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+              className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'therapies'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
             >
-              Recommended Therapies
+              <DynamicText>{t('dashboard.recommended_therapies')}</DynamicText>
             </button>
           )}
         </nav>
@@ -297,13 +297,13 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
-                    <motion.div 
+                    <motion.div
                       className="w-3 h-3 bg-blue-500 rounded-full mr-2"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
                     <span className="text-sm font-medium text-gray-700">
-                      AI Prediction Confidence
+                      <DynamicText>{t('dashboard.ai_confidence')}</DynamicText>
                     </span>
                   </div>
                   <span className={`text-lg font-bold ${getConfidenceColor(scores.ml_prediction.confidence)}`}>
@@ -327,14 +327,13 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                 <div key={dosha}>
                   <div className="flex justify-between items-center mb-3">
                     <div>
-                      <span className="font-semibold text-gray-800 text-lg capitalize">{dosha}</span>
-                      <span className="text-sm text-gray-500 ml-2 block">{getDescription(dosha)}</span>
+                      <span className="font-semibold text-gray-800 text-lg capitalize"><DynamicText>{dosha}</DynamicText></span>
+                      <span className="text-sm text-gray-500 ml-2 block"><DynamicText>{getDescription(dosha)}</DynamicText></span>
                     </div>
-                    <motion.span 
-                      className={`text-2xl font-bold ${
-                        dosha === 'vata' ? 'text-blue-600' :
+                    <motion.span
+                      className={`text-2xl font-bold ${dosha === 'vata' ? 'text-blue-600' :
                         dosha === 'pitta' ? 'text-red-600' : 'text-green-600'
-                      }`}
+                        }`}
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: index * 0.2, duration: 0.5, type: 'spring' }}
@@ -344,11 +343,10 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
                     <motion.div
-                      className={`h-4 rounded-full shadow-sm relative overflow-hidden ${
-                        dosha === 'vata' ? 'bg-gradient-to-r from-blue-400 to-blue-600' :
+                      className={`h-4 rounded-full shadow-sm relative overflow-hidden ${dosha === 'vata' ? 'bg-gradient-to-r from-blue-400 to-blue-600' :
                         dosha === 'pitta' ? 'bg-gradient-to-r from-red-400 to-red-600' :
-                        'bg-gradient-to-r from-green-400 to-green-600'
-                      }`}
+                          'bg-gradient-to-r from-green-400 to-green-600'
+                        }`}
                       initial={{ width: 0 }}
                       animate={{ width: `${scores.percent[dosha as keyof typeof scores.percent]}%` }}
                       transition={{ duration: 1.5, delay: index * 0.3 }}
@@ -358,10 +356,10 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                         className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
                         initial={{ x: '-100%' }}
                         animate={{ x: '100%' }}
-                        transition={{ 
-                          duration: 2, 
-                          delay: index * 0.3 + 1, 
-                          ease: 'easeInOut' 
+                        transition={{
+                          duration: 2,
+                          delay: index * 0.3 + 1,
+                          ease: 'easeInOut'
                         }}
                       />
                     </motion.div>
@@ -371,15 +369,15 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
             </div>
 
             {/* Enhanced Dominant Type Card */}
-            <motion.div 
+            <motion.div
               className="p-6 bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-xl border border-purple-200 shadow-lg"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.8 }}
             >
               <div className="text-center">
-                <h4 className="text-sm font-medium text-gray-600 mb-2">Your Dominant Constitution</h4>
-                <motion.p 
+                <h4 className="text-sm font-medium text-gray-600 mb-2"><DynamicText>{t('prakriti.dominant')}</DynamicText></h4>
+                <motion.p
                   className="text-3xl font-bold text-gray-800 capitalize mb-2"
                   animate={{ scale: [1, 1.05, 1] }}
                   transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
@@ -388,11 +386,11 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                 </motion.p>
                 <p className="text-sm text-gray-600 mb-4">{getDescription(scores.dominant)}</p>
                 <div className="flex justify-center">
-                  <motion.div 
+                  <motion.div
                     className={`w-16 h-16 ${getColorClass(scores.dominant)} rounded-full flex items-center justify-center shadow-xl`}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
-                    animate={{ 
+                    animate={{
                       boxShadow: [
                         '0 10px 20px rgba(0,0,0,0.1)',
                         '0 20px 40px rgba(0,0,0,0.2)',
@@ -402,7 +400,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                     transition={{ duration: 3, repeat: Infinity }}
                   >
                     <span className="text-white font-bold text-xl capitalize">
-                      {scores.dominant[0].toUpperCase()}
+                      <DynamicText>{scores.dominant[0].toUpperCase()}</DynamicText>
                     </span>
                   </motion.div>
                 </div>
@@ -414,15 +412,15 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
         {activeTab === 'charts' && (
           <div className="space-y-8">
             {/* Custom Pie Chart */}
-            <motion.div 
+            <motion.div
               className="bg-gray-50 rounded-xl p-6"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <h4 className="text-lg font-semibold text-gray-800 mb-6 text-center">Prakriti Distribution</h4>
+              <h4 className="text-lg font-semibold text-gray-800 mb-6 text-center">{t('dashboard.prakriti_distribution')}</h4>
               <CustomPieChart scores={scores} />
-              
+
               {/* Enhanced Legend */}
               <div className="flex justify-center mt-8 space-x-8">
                 {[
@@ -430,14 +428,14 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                   { key: 'pitta', color: '#ef4444', percent: scores.percent.pitta },
                   { key: 'kapha', color: '#22c55e', percent: scores.percent.kapha }
                 ].map((item, index) => (
-                  <motion.div 
+                  <motion.div
                     key={item.key}
                     className="flex items-center bg-white p-3 rounded-lg shadow-sm border"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 + 0.5 }}
                   >
-                    <div 
+                    <div
                       className="w-4 h-4 rounded-full mr-3"
                       style={{ backgroundColor: item.color }}
                     />
@@ -453,7 +451,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
             </motion.div>
 
             {/* 3D Bar Chart */}
-            <motion.div 
+            <motion.div
               className="bg-gray-50 rounded-xl p-6"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -478,7 +476,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                   transition={{ delay: index * 0.1 + 1 }}
                   whileHover={{ scale: 1.05 }}
                 >
-                  <motion.div 
+                  <motion.div
                     className={`text-3xl font-bold text-${item.color}-600 mb-2`}
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity, delay: index * 0.5 }}
@@ -486,9 +484,9 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                     {item.percent}%
                   </motion.div>
                   <div className={`text-sm text-${item.color}-800 font-medium capitalize mb-1`}>
-                    {item.key}
+                    <DynamicText>{item.key}</DynamicText>
                   </div>
-                  <div className="text-xs text-gray-600">{item.element}</div>
+                  <div className="text-xs text-gray-600"><DynamicText>{item.element}</DynamicText></div>
                 </motion.div>
               ))}
             </div>
@@ -496,7 +494,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
         )}
 
         {activeTab === 'therapies' && therapyRecommendations && (
-          <motion.div 
+          <motion.div
             className="space-y-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -505,7 +503,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
             {/* Primary Therapies */}
             <div>
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <motion.div 
+                <motion.div
                   className="w-3 h-3 bg-green-500 rounded-full mr-2"
                   animate={{ scale: [1, 1.3, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
@@ -514,8 +512,8 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               </h4>
               <div className="grid gap-3">
                 {therapyRecommendations.primary?.map((therapy: string, index: number) => (
-                  <motion.div 
-                    key={index} 
+                  <motion.div
+                    key={index}
                     className="flex items-center p-4 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors cursor-pointer"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -523,7 +521,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                     whileHover={{ scale: 1.02 }}
                   >
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-3" />
-                    <span className="text-gray-700 font-medium">{therapy}</span>
+                    <span className="text-gray-700 font-medium"><DynamicText>{therapy}</DynamicText></span>
                   </motion.div>
                 ))}
               </div>
@@ -538,15 +536,15 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                 </h4>
                 <div className="grid gap-3">
                   {therapyRecommendations.yoga.map((practice: string, index: number) => (
-                    <motion.div 
-                      key={index} 
+                    <motion.div
+                      key={index}
                       className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
                       <span className="text-blue-600 mr-3 text-lg">🧘</span>
-                      <span className="text-gray-700">{practice}</span>
+                      <span className="text-gray-700"><DynamicText>{practice}</DynamicText></span>
                     </motion.div>
                   ))}
                 </div>
@@ -562,8 +560,8 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
                 </h4>
                 <div className="space-y-3">
                   {therapyRecommendations.lifestyle.map((tip: string, index: number) => (
-                    <motion.div 
-                      key={index} 
+                    <motion.div
+                      key={index}
                       className="flex items-start p-3 bg-orange-50 rounded-lg border border-orange-200"
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -579,7 +577,7 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
 
             {/* Confidence Level */}
             {therapyRecommendations.confidence_level && (
-              <motion.div 
+              <motion.div
                 className="p-6 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -587,14 +585,13 @@ const PrakritiSummaryCard: React.FC<Props> = ({ scores, therapyRecommendations }
               >
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold text-gray-700">Recommendation Confidence</span>
-                  <motion.span 
-                    className={`px-4 py-2 rounded-full text-sm font-bold ${
-                      therapyRecommendations.confidence_level === 'high' 
-                        ? 'bg-green-100 text-green-800 border border-green-300'
-                        : therapyRecommendations.confidence_level === 'medium'
+                  <motion.span
+                    className={`px-4 py-2 rounded-full text-sm font-bold ${therapyRecommendations.confidence_level === 'high'
+                      ? 'bg-green-100 text-green-800 border border-green-300'
+                      : therapyRecommendations.confidence_level === 'medium'
                         ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
                         : 'bg-red-100 text-red-800 border border-red-300'
-                    }`}
+                      }`}
                     whileHover={{ scale: 1.05 }}
                   >
                     {therapyRecommendations.confidence_level.toUpperCase()}

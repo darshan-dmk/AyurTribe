@@ -30,7 +30,7 @@ const CSV_FILE_PATH = path.resolve(__dirname, '../../../models/nutrition_dataset
 
 // Helper to parse CSV line containing quoted fields
 function parseCSVLine(text: string) {
-    const result = [];
+    const result: string[] = [];
     let curve = 0;
     let start = 0;
     let inQuote = false;
@@ -85,7 +85,7 @@ async function seed() {
     const headers = parseCSVLine(lines[0]);
     console.log('Headers:', headers);
 
-    const foodItems = [];
+    const foodItems: any[] = [];
 
     // Skip header and parse rows
     for (let i = 1; i < lines.length; i++) {
@@ -140,21 +140,63 @@ async function seed() {
         return;
     }
 
-    // 2. Insert real data in batches
+    // 2. Check which columns exist in the database to avoid insert errors
+    console.log('🔍 Checking database columns...');
+    const { data: firstItem } = await supabase.from('food_items').select('*').limit(1);
+    const existingColumns = new Set(['name_en', 'food_group', 'calories_per_100g']); // Minimum required
+
+    // We can't easily get all columns if table is empty, so we try to fetch a few known ones
+    const possibleColumns = [
+        'name_sanskrit', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g',
+        'vitamins', 'minerals', 'rasa', 'virya', 'vipaka', 'guna',
+        'dosha_effect', 'seasonal_suitability', 'digestion_level',
+        'region_common', 'contraindications', 'suggested_combinations',
+        'therapeutic_uses', 'recommended_portion'
+    ];
+
+    for (const col of possibleColumns) {
+        const { error } = await supabase.from('food_items').select(col).limit(1);
+        if (!error) {
+            existingColumns.add(col);
+        }
+    }
+    console.log(`✅ Found ${existingColumns.size} valid columns in database.`);
+
+    // 3. Insert real data in batches
     console.log(`📥 Inserting ${foodItems.length} items into Supabase...`);
 
     // Batch size of 50 to avoid payload limits
     const BATCH_SIZE = 50;
     for (let i = 0; i < foodItems.length; i += BATCH_SIZE) {
-        const batch = foodItems.slice(i, i + BATCH_SIZE);
+        const fullBatch = foodItems.slice(i, i + BATCH_SIZE);
+
+        // Filter out columns that don't exist in the DB
+        const batch = fullBatch.map(item => {
+            const filteredItem: any = {
+                name_en: item.name_en,
+                food_group: item.food_group,
+                calories_per_100g: item.calories_per_100g
+            };
+            for (const col of existingColumns) {
+                if (item[col] !== undefined) {
+                    filteredItem[col] = item[col];
+                }
+            }
+            return filteredItem;
+        });
+
         const { error: insertError } = await supabase
             .from('food_items')
             .insert(batch);
 
         if (insertError) {
             console.error(`❌ Error inserting batch ${i / BATCH_SIZE + 1}:`, insertError);
+            // If it's a batch error, try to log one item to see why
+            if (i === 0) console.log('Sample item being inserted:', batch[0]);
         } else {
-            console.log(`   Processed items ${i + 1} to ${Math.min(i + BATCH_SIZE, foodItems.length)}`);
+            if ((i / BATCH_SIZE) % 10 === 0) {
+                console.log(`   Processed items ${i + 1} to ${Math.min(i + BATCH_SIZE, foodItems.length)}`);
+            }
         }
     }
 

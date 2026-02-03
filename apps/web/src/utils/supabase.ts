@@ -105,7 +105,7 @@ export const authService: AuthService = {
 
             const { data, error } = await Promise.race([
               dbQuery,
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Database query timed out')), 15000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Database query timed out')), 10000))
             ]) as any;
 
             if (error) throw error;

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
 import { supabase } from '../../utils/supabase';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
@@ -179,7 +180,7 @@ const OTPVerify: React.FC = () => {
       console.log('[OTPVerify] User object:', user);
       console.log('[OTPVerify] User role:', user.role);
       console.log('[OTPVerify] User type:', typeof user.role);
-      
+
       if (user.role === 'practitioner' || user.role === 'admin') {
         // Practitioners and admins go directly to their dashboard without Prakriti questionnaire
         console.log('[OTPVerify] Practitioner/Admin user - going to practitioner dashboard');
@@ -253,9 +254,9 @@ const OTPVerify: React.FC = () => {
       `}</style>
 
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-           style={{
-             background: `radial-gradient(ellipse at top left, rgba(255,183,77,0.15), transparent 40%), linear-gradient(135deg,#2c1810 0%, #3d2817 100%)`
-           }}>
+        style={{
+          background: `radial-gradient(ellipse at top left, rgba(255,183,77,0.15), transparent 40%), linear-gradient(135deg,#2c1810 0%, #3d2817 100%)`
+        }}>
 
         <div className="absolute inset-0 opacity-5 pointer-events-none mandala-rotate" />
 
@@ -285,12 +286,12 @@ const OTPVerify: React.FC = () => {
           </motion.div>
 
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-                     className="text-2xl font-bold text-center mb-2" style={{ color: '#2c1810' }}>
+            className="text-2xl font-bold text-center mb-2" style={{ color: '#2c1810' }}>
             Verify your {pendingType ?? 'contact'}
           </motion.h1>
 
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                    className="text-center mb-8" style={{ color: '#6b4423' }}>
+            className="text-center mb-8" style={{ color: '#6b4423' }}>
             We sent a 6-digit code to <span className="font-semibold" style={{ color: '#8b6914' }}>{pendingValue}</span>
           </motion.p>
 
@@ -322,8 +323,8 @@ const OTPVerify: React.FC = () => {
 
           {error && (
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center gap-2 p-3 rounded-lg border text-sm mb-4"
-                        style={{ color: '#a0522d', background: 'rgba(205,133,63,0.1)', borderColor: 'rgba(205,133,63,0.3)' }}>
+              className="flex items-center gap-2 p-3 rounded-lg border text-sm mb-4"
+              style={{ color: '#a0522d', background: 'rgba(205,133,63,0.1)', borderColor: 'rgba(205,133,63,0.3)' }}>
               ⚠️ {error}
             </motion.div>
           )}
@@ -370,6 +371,7 @@ const OTPVerify: React.FC = () => {
 
           <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #daa520, transparent)' }} />
         </motion.div>
+        <GlobalFooter dark className="absolute bottom-4 left-0 right-0 z-30" />
       </div>
     </>
   );

@@ -41,9 +41,12 @@ interface Props {
   scores: PrakritiScores;
 }
 
+import { useLanguage } from '../context/LanguageContext';
+
 const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
+  const { t } = useLanguage();
   const [activeChart, setActiveChart] = useState('pie');
-  
+
   // Colors for the doshas
   const COLORS = {
     vata: '#3b82f6',    // blue
@@ -77,11 +80,11 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
         <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
           <p className="font-bold text-gray-800">{label}</p>
           <p className="text-gray-600">
-            Percentage: <span className="font-semibold">{payload[0].value}%</span>
+            {t('common.percentage')}: <span className="font-semibold">{payload[0].value}%</span>
           </p>
           {scores.ml_prediction && (
             <p className="text-sm text-gray-500 mt-1">
-              AI Confidence: {Math.round(scores.ml_prediction.confidence * 100)}%
+              {t('dashboard.ai_confidence')}: {Math.round(scores.ml_prediction.confidence * 100)}%
             </p>
           )}
         </div>
@@ -97,43 +100,39 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
         <nav className="flex flex-wrap">
           <button
             onClick={() => setActiveChart('pie')}
-            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-              activeChart === 'pie'
+            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeChart === 'pie'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
-            Pie Chart
+            {t('common.pie_chart')}
           </button>
           <button
             onClick={() => setActiveChart('bar')}
-            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-              activeChart === 'bar'
+            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeChart === 'bar'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
-            Bar Chart
+            {t('common.bar_chart')}
           </button>
           <button
             onClick={() => setActiveChart('radar')}
-            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-              activeChart === 'radar'
+            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeChart === 'radar'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
-            Radar Chart
+            {t('common.radar_chart')}
           </button>
           <button
             onClick={() => setActiveChart('detailed')}
-            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-              activeChart === 'detailed'
+            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeChart === 'detailed'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
-            Detailed View
+            {t('common.view_details')}
           </button>
         </nav>
       </div>
@@ -147,7 +146,7 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
             transition={{ duration: 0.5 }}
             className="h-80"
           >
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Prakriti Distribution</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">{t('prakriti.distribution')}</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -180,7 +179,7 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
             transition={{ duration: 0.5 }}
             className="h-80"
           >
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Dosha Strengths</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">{t('prakriti.dosha_strengths')}</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -197,7 +196,7 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
                   <YAxis domain={[0, 100]} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Bar dataKey="percentage" name="Percentage">
+                  <Bar dataKey="percentage" name={t('common.percentage')}>
                     {barData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -215,7 +214,7 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
             transition={{ duration: 0.5 }}
             className="h-80"
           >
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Dosha Comparison</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">{t('prakriti.dosha_comparison')}</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
@@ -223,7 +222,7 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
                   <PolarAngleAxis dataKey="dosha" />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} />
                   <Radar
-                    name="Dosha Strength"
+                    name={t('prakriti.dosha_strength')}
                     dataKey="value"
                     stroke={COLORS[scores.dominant as keyof typeof COLORS] || COLORS.vata}
                     fill={COLORS[scores.dominant as keyof typeof COLORS] || COLORS.vata}
@@ -243,17 +242,17 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
             transition={{ duration: 0.5 }}
             className="space-y-6"
           >
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Detailed Prakriti Analysis</h3>
-            
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">{t('prakriti.detailed_analysis')}</h3>
+
             {/* Dominant Dosha Card */}
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
               <div className="text-center">
-                <h4 className="text-sm font-medium text-gray-600 mb-2">Your Dominant Constitution</h4>
+                <h4 className="text-sm font-medium text-gray-600 mb-2">{t('prakriti.dominant_constitution')}</h4>
                 <p className="text-3xl font-bold text-gray-800 capitalize mb-2">
                   {scores.dominant} Prakriti
                 </p>
                 <div className="flex justify-center my-4">
-                  <div 
+                  <div
                     className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
                     style={{ backgroundColor: COLORS[scores.dominant as keyof typeof COLORS] || COLORS.vata }}
                   >
@@ -273,17 +272,17 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
             {/* Dosha Percentages */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {Object.entries(scores.percent).map(([dosha, percentage]) => (
-                <div 
-                  key={dosha} 
+                <div
+                  key={dosha}
                   className="bg-white rounded-lg p-4 border shadow-sm"
-                  style={{ 
+                  style={{
                     borderColor: (COLORS[dosha as keyof typeof COLORS] || COLORS.vata) + '40',
                     backgroundColor: (COLORS[dosha as keyof typeof COLORS] || COLORS.vata) + '05'
                   }}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h5 className="font-semibold text-gray-800 capitalize">{dosha}</h5>
-                    <span 
+                    <span
                       className="text-xl font-bold"
                       style={{ color: COLORS[dosha as keyof typeof COLORS] || COLORS.vata }}
                     >
@@ -291,9 +290,9 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="h-2 rounded-full"
-                      style={{ 
+                      style={{
                         width: `${percentage}%`,
                         backgroundColor: COLORS[dosha as keyof typeof COLORS] || COLORS.vata
                       }}
@@ -307,38 +306,38 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
             {scores.ml_prediction && (
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-gray-800">AI-Powered Analysis</h4>
+                  <h4 className="text-lg font-semibold text-gray-800">{t('prakriti.ai_analysis')}</h4>
                   <div className="flex items-center bg-blue-100 px-3 py-1 rounded-full">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                    <span className="text-sm font-medium text-blue-800">ML Enhanced</span>
+                    <span className="text-sm font-medium text-blue-800">{t('prakriti.ml_enhanced')}</span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span className="text-gray-700">Prediction Confidence</span>
+                      <span className="text-gray-700">{t('dashboard.ai_confidence')}</span>
                       <span className="font-semibold text-gray-800">
                         {Math.round(scores.ml_prediction.confidence * 100)}%
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="h-2 rounded-full bg-blue-500"
                         style={{ width: `${scores.ml_prediction.confidence * 100}%` }}
                       />
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white p-3 rounded-lg border">
-                      <p className="text-sm text-gray-600">Predicted Dosha</p>
+                      <p className="text-sm text-gray-600">{t('prakriti.predicted_dosha')}</p>
                       <p className="font-semibold text-gray-800 capitalize">
                         {scores.ml_prediction.predicted}
                       </p>
                     </div>
                     <div className="bg-white p-3 rounded-lg border">
-                      <p className="text-sm text-gray-600">Traditional Analysis</p>
+                      <p className="text-sm text-gray-600">{t('prakriti.traditional_analysis')}</p>
                       <p className="font-semibold text-gray-800 capitalize">
                         {scores.dominant}
                       </p>
@@ -352,12 +351,12 @@ const PrakritiVisualization: React.FC<Props> = ({ scores }) => {
 
         {/* Chart Information */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h4 className="font-medium text-gray-800 mb-2">About Your Prakriti Analysis</h4>
+          <h4 className="font-medium text-gray-800 mb-2">{t('prakriti.about_analysis')}</h4>
           <p className="text-sm text-gray-600">
-            This visualization shows your unique Ayurvedic constitution based on your questionnaire responses. 
-            {scores.ml_prediction 
-              ? " The AI-powered analysis enhances traditional methods with machine learning for more accurate results."
-              : " The analysis is based on traditional Ayurvedic principles."}
+            {t('prakriti.about_desc')}
+            {scores.ml_prediction
+              ? " " + t('prakriti.ai_desc')
+              : " " + t('prakriti.traditional_desc')}
           </p>
         </div>
       </div>

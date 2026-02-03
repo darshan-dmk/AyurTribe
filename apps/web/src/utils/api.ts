@@ -1,15 +1,35 @@
 // apps/web/src/utils/api.ts
 import { supabase, authService } from './supabase';
 
-const API_URL = (process.env.REACT_APP_API_URL as string) || 'http://localhost:4000';
+const rawUrl = (process.env.REACT_APP_API_URL as string) || 'http://localhost:4000';
+// Ensure API_URL doesn't end with /api or /, as we append /api in the request method
+const API_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 // allow callers to pass `body` as `any` (we stringify later in request)
 type AnyRequestInit = Omit<RequestInit, 'body'> & { body?: any; headers?: HeadersInit };
 
 class ApiService {
+  private currentToken: string | null = null;
+  private tokenPromise: Promise<string | null> | null = null;
+
   constructor() {
     console.log('[ApiService] Initialized with API URL:', API_URL);
     console.log('[ApiService] Using Supabase for authentication');
+
+    // Initialize token and listen for changes
+    this.initAuthListener();
+  }
+
+  private async initAuthListener() {
+    // Get initial session
+    const { data: { session } } = await supabase.auth.getSession();
+    this.currentToken = session?.access_token || null;
+
+    // Listen for changes
+    supabase.auth.onAuthStateChange((_event, session) => {
+      this.currentToken = session?.access_token || null;
+      console.log('[ApiService] Auth state changed, token updated');
+    });
   }
 
   /**
@@ -19,37 +39,45 @@ class ApiService {
    *  2) localStorage fallback keys (authToken, token, accessToken) for backward compat
    */
   private async getAuthToken(): Promise<string | null> {
-    try {
-      const session = await supabase.auth.getSession();
-      if (session?.data?.session?.access_token) {
-        console.log('[ApiService] Using Supabase session token');
-        return session.data.session.access_token;
-      }
-      // Fall back to checking current session
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      if (currentSession?.access_token) {
-        console.log('[ApiService] Using current session token');
-        return currentSession.access_token;
-      }
+    // 1. Check local variable first (fastest, kept in sync by listener)
+    if (this.currentToken) return this.currentToken;
 
-      // Backwards compatibility: some code paths still store a backend token in localStorage
-      const fallback =
-        localStorage.getItem('authToken') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('accessToken') ||
-        null;
-      return fallback;
-    } catch (error) {
-      console.warn(
-        '[ApiService] getAuthToken failed to read supabase session, checking fallback storage',
-        error
+    // 2. If no token in memory, try searching concurrent promises
+    if (this.tokenPromise) return this.tokenPromise;
+
+    // 3. Last resort: Fetch from Supabase with timeout
+    this.tokenPromise = this.fetchToken();
+    try {
+      const token = await this.tokenPromise;
+      if (token) this.currentToken = token;
+      return token;
+    } finally {
+      this.tokenPromise = null;
+    }
+  }
+
+  private async fetchToken(): Promise<string | null> {
+    try {
+      // Use getSession but prefer the cached version from listener if available
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('getSession timeout')), 10000)
       );
-      const fallback =
-        localStorage.getItem('authToken') ||
+
+      const { data } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
+      const token = data?.session?.access_token;
+      if (token) return token;
+
+      // Check fallback storage
+      return localStorage.getItem('authToken') ||
         localStorage.getItem('token') ||
-        localStorage.getItem('accessToken') ||
-        null;
-      return fallback;
+        localStorage.getItem('accessToken') || null;
+    } catch (error) {
+      console.warn('[ApiService] getAuthToken failed or timed out, checking fallback storage', error);
+      return localStorage.getItem('authToken') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('accessToken') || null;
     }
   }
 
@@ -113,9 +141,12 @@ class ApiService {
     console.log('[ApiService] Has token:', !!token);
 
     // Build headers (case-insensitive)
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
+
+    // Set default content type only if not FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     // Merge provided headers (support Headers instance too)
     if (options.headers) {
@@ -523,4 +554,5 @@ class ApiService {
   }
 }
 
-export default new ApiService();
+const apiService = new ApiService();
+export default apiService;

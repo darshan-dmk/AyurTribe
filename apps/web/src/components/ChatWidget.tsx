@@ -49,6 +49,8 @@ const ChatWidget: React.FC<{
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [isConnectingToPractitioner, setIsConnectingToPractitioner] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [userDosha, setUserDosha] = useState<string | null>(null);
 
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const realtimeRef = useRef<any>(null);
@@ -61,6 +63,18 @@ const ChatWidget: React.FC<{
     console.log('[ChatWidget] Selected thread:', selectedThread);
   }, [userId, currentUser, selectedThread]);
 
+  // Fetch user's Dosha once userId is available
+  useEffect(() => {
+    if (userId) {
+      getUserPrakriti().then(dosha => {
+        if (dosha) {
+          console.log('[ChatWidget] Detected User Dosha:', dosha);
+          setUserDosha(dosha);
+        }
+      });
+    }
+  }, [userId]);
+
   // ADD THIS NEW useEffect RIGHT HERE - After the debugging useEffect
   useEffect(() => {
     // Show quick actions for new threads or threads with only welcome message
@@ -69,136 +83,56 @@ const ChatWidget: React.FC<{
     }
   }, [selectedThread, messages.length]);
   // Quick action buttons for common queries
-  const quickActions = [
-    { id: 'prakriti', label: '🧘 About Prakriti', query: 'What is Prakriti and how does it work?' },
-    { id: 'appointment', label: '📅 Book Appointment', query: 'How can I book an appointment?' },
-    { id: 'diet', label: '🥗 Diet Tips', query: 'What diet should I follow for my constitution?' },
-    { id: 'symptoms', label: '💊 Symptoms Help', query: 'I need help with my symptoms' },
-    { id: 'practitioner', label: '👨‍⚕️ Talk to Practitioner', query: 'CONNECT_PRACTITIONER' }
-  ];
+  const getQuickActions = () => {
+    const baseActions = [
+      { id: 'prakriti', label: '🧘 About Prakriti', query: 'What is Ayurvedic Prakriti and how do I optimize it?' },
+      { id: 'diet', label: '🥗 My Diet Plan', query: `What diet is optimal for my ${userDosha || 'body type'}?` },
+      { id: 'appointment', label: '📅 Consultation', query: 'I would like to book an appointment with a Vaidya.' },
+      { id: 'practitioner', label: '👨‍⚕️ Expert Chat', query: 'CONNECT_PRACTITIONER' }
+    ];
 
-  // AI Bot responses based on keywords
-  const getBotResponse = async (message: string): Promise<string> => {
-    const lowerMessage = message.toLowerCase();
-
-    // Prakriti related
-    if (lowerMessage.includes('prakriti') || lowerMessage.includes('constitution')) {
-      return `Prakriti is your unique Ayurvedic constitution determined at birth. It consists of three doshas:
-
-🔵 **Vata** (Air & Space): Governs movement, creativity, and communication
-🔴 **Pitta** (Fire & Water): Controls digestion, metabolism, and transformation  
-🟢 **Kapha** (Earth & Water): Manages structure, stability, and lubrication
-
-Your Prakriti assessment helps determine:
-• Personalized diet recommendations
-• Suitable lifestyle practices
-• Optimal exercise routines
-• Preventive health measures
-
-Would you like to take the Prakriti assessment or learn more about a specific dosha?`;
+    if (userDosha?.toLowerCase() === 'vata') {
+      baseActions.unshift({ id: 'vata_care', label: '🌿 Vata Balance', query: 'Give me 3 grounding tips for my Vata nature today.' });
+    } else if (userDosha?.toLowerCase() === 'pitta') {
+      baseActions.unshift({ id: 'pitta_care', label: '❄️ Pitta Cooling', query: 'Suggest some cooling rituals to balance my Pitta.' });
+    } else if (userDosha?.toLowerCase() === 'kapha') {
+      baseActions.unshift({ id: 'kapha_care', label: '🔥 Kapha Vitality', query: 'How can I increase my energy levels as a Kapha person?' });
     }
 
-    // Appointment booking
-    if (lowerMessage.includes('appointment') || lowerMessage.includes('book') || lowerMessage.includes('consultation')) {
-      return `I can help you book an appointment! Here's how:
+    return baseActions.slice(0, 5); // Keep it compact
+  };
 
-📅 **Booking Options:**
-1. Click on "Book Appointment" in your dashboard
-2. Choose your preferred practitioner
-3. Select date and time
-4. Describe your health concerns
+  // AI Bot responses via Gemini API
+  const getBotResponse = async (message: string, isImage = false, imageFile?: File): Promise<string> => {
+    try {
+      if (isImage && imageFile) {
+        const formData = new FormData();
+        formData.append('photo', imageFile);
+        formData.append('prompt', message || "Analyze this image in an Ayurvedic context and provide health insights.");
+        formData.append('userId', userId || ''); // Pass userId for context
 
-**Available Consultation Types:**
-• Initial Prakriti Assessment (60 mins)
-• Follow-up Consultation (30 mins)
-• Diet & Lifestyle Planning (45 mins)
-• Therapy Sessions (varies)
+        const response = await api.post('/ai-chat/analyze-photo', formData, {
+          headers: {} // Let browser set content-type for FormData
+        });
+        return response.analysis;
+      } else {
+        // Build simple history from last few messages
+        const history = messages.slice(-5).map(msg => ({
+          role: msg.isBot ? 'model' : 'user' as const,
+          parts: msg.content
+        }));
 
-Our practitioners are available Mon-Sat, 9 AM - 6 PM.
-
-Would you like me to help you book an appointment now?`;
-    }
-
-    // Diet recommendations
-    if (lowerMessage.includes('diet') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
-      const userPrakriti = await getUserPrakriti();
-      if (userPrakriti) {
-        return getDietRecommendations(userPrakriti);
+        const response = await api.post('/ai-chat/message', {
+          message,
+          history,
+          userId: userId // Pass the current user ID for contextual analysis
+        });
+        return response.response;
       }
-      return `For personalized diet recommendations, I need to know your Prakriti type first. 
-
-**General Ayurvedic Diet Principles:**
-• Eat freshly cooked, warm meals
-• Follow regular meal times
-• Avoid incompatible food combinations
-• Drink warm water throughout the day
-• Eat your largest meal at lunch
-
-Please complete your Prakriti assessment for personalized recommendations. Would you like to start now?`;
+    } catch (error) {
+      console.error('AI Bot Error:', error);
+      return "I'm having trouble connecting to my Ayurvedic knowledge base right now. Please try again in a moment.";
     }
-
-    // Symptoms and health concerns
-    if (lowerMessage.includes('symptom') || lowerMessage.includes('pain') || lowerMessage.includes('sick') || lowerMessage.includes('health')) {
-      return `I understand you're experiencing health concerns. While I can provide general Ayurvedic guidance, it's important to consult with our practitioners for proper diagnosis and treatment.
-
-**How I Can Help:**
-• Explain Ayurvedic perspective on symptoms
-• Suggest general lifestyle modifications
-• Connect you with a practitioner
-• Provide preventive health tips
-
-**For immediate assistance:**
-Would you like to describe your symptoms so I can connect you with the right practitioner?
-
-⚠️ For emergencies, please contact emergency services immediately.`;
-    }
-
-    // Medications and treatments
-    if (lowerMessage.includes('medicine') || lowerMessage.includes('treatment') || lowerMessage.includes('therapy')) {
-      return `Ayurvedic treatments are personalized based on your unique constitution and current imbalances.
-
-**Common Ayurvedic Therapies:**
-• **Panchakarma**: Detoxification procedures
-• **Herbal Medicine**: Natural formulations
-• **Yoga & Meditation**: Mind-body practices
-• **Abhyanga**: Therapeutic oil massage
-• **Dietary Therapy**: Customized nutrition plans
-
-All treatments should be prescribed by qualified practitioners after proper assessment.
-
-Would you like to schedule a consultation to discuss treatment options?`;
-    }
-
-    // Mental health
-    if (lowerMessage.includes('stress') || lowerMessage.includes('anxiety') || lowerMessage.includes('depression') || lowerMessage.includes('mental')) {
-      return `Mental wellness is integral to Ayurvedic health. I'm here to support you.
-
-**Ayurvedic Approach to Mental Health:**
-• Mind-body balance through daily routines
-• Meditation and breathing exercises
-• Herbal support for emotional balance
-• Lifestyle modifications
-• Yoga for stress relief
-
-**Immediate Practices:**
-🧘 Try deep breathing: Inhale for 4, hold for 4, exhale for 6
-🌅 Maintain regular sleep schedule
-🚶 Take daily nature walks
-📿 Practice gratitude meditation
-
-Would you like to connect with a practitioner specializing in mental wellness?`;
-    }
-
-    // Default response
-    return `I'm here to help you with your Ayurvedic health journey! I can assist with:
-
-• Understanding your Prakriti (constitution)
-• Booking appointments with practitioners
-• Diet and lifestyle recommendations
-• General health queries
-• Connecting you with specialists
-
-What would you like to know more about?`;
   };
 
   // Get user's Prakriti from database
@@ -510,19 +444,30 @@ What would you like to know more about?`;
   }, [selectedThread]);
 
   // Send message
-  const sendMessage = async (content?: string) => {
+  const sendMessage = async (content?: string, isImage = false, imageFile?: File) => {
     const messageContent = content || input.trim();
-    if (!selectedThread || !userId || !messageContent) return;
-
-    const payload = {
-      thread_id: selectedThread.id,
-      sender_id: userId,
-      content: messageContent,
-      metadata: { isBot: false },
-      created_at: new Date().toISOString(),
-    };
+    if (!selectedThread || !userId || (!messageContent && !isImage)) return;
 
     try {
+      let finalContent = messageContent;
+      let metadata: any = { isBot: false };
+
+      if (isImage && imageFile) {
+        // In a real app, we would upload to Supabase Storage first.
+        // For this demo, we'll prefix content to indicate it's an image.
+        finalContent = messageContent || "Sent an image for analysis.";
+        metadata.hasImage = true;
+        metadata.imageName = imageFile.name;
+      }
+
+      const payload = {
+        thread_id: selectedThread.id,
+        sender_id: userId,
+        content: finalContent,
+        metadata: metadata,
+        created_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase.from('chat_messages').insert(payload);
       if (error) {
         console.error('[ChatWidget] sendMessage error', error);
@@ -531,34 +476,43 @@ What would you like to know more about?`;
 
       setInput('');
 
-
       // Check if it's a request to connect with practitioner
-      if (messageContent === 'CONNECT_PRACTITIONER' || messageContent.toLowerCase().includes('talk to practitioner')) {
+      if (finalContent === 'CONNECT_PRACTITIONER' || finalContent.toLowerCase().includes('talk to practitioner')) {
         await connectToPractitioner();
       } else if (!selectedThread.practitioner_id) {
         // If no practitioner assigned, provide bot response
-        await sendBotResponse(messageContent);
+        await sendBotResponse(finalContent, isImage, imageFile);
       }
     } catch (e) {
       console.error('[ChatWidget] sendMessage catch', e);
     }
   };
 
+  const handleSend = () => {
+    if (selectedImage) {
+      sendMessage(input, true, selectedImage);
+      setSelectedImage(null);
+    } else {
+      sendMessage();
+    }
+  };
+
 
   // Send bot response
-  const sendBotResponse = async (userMessage: string) => {
+  const sendBotResponse = async (userMessage: string, isImage = false, imageFile?: File) => {
     setIsTyping(true);
 
-    // Simulate typing delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
-    const botResponse = await getBotResponse(userMessage);
+    const botResponse = await getBotResponse(userMessage, isImage, imageFile);
 
     const botPayload = {
       thread_id: selectedThread!.id,
       sender_id: userId,
       content: botResponse,
-      metadata: { isBot: true, botName: 'Ayur Tribe AI Assistant' },
+      metadata: {
+        isBot: true,
+        botName: 'Ayur Tribe AI Assistant',
+        wasImageAnalysis: isImage
+      },
       created_at: new Date().toISOString(),
     };
 
@@ -687,14 +641,17 @@ What would you like to know more about?`;
     console.log('[ChatWidget] Creating new thread for user:', currentUserId);
 
     try {
-      const insertPayload = {
-        title: title || 'Health Consultation',
+      const insertPayload: any = {
         patient_id: currentUserId,
         practitioner_id: null,
-        status: 'open',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'open'
       };
+
+      // Only add title if it's likely to exist (avoiding schema cache errors)
+      // Some versions of the DB might use 'subject' or nothing at all
+      if (title) {
+        insertPayload.title = title;
+      }
 
       console.log('[ChatWidget] Inserting thread:', insertPayload);
 
@@ -752,7 +709,7 @@ What would you like to know more about?`;
 
 
   // Handle quick action click
-  const handleQuickAction = (action: typeof quickActions[0]) => {
+  const handleQuickAction = (action: any) => {
     console.log('[ChatWidget] Handling quick action:', action.id);
 
     if (action.query === 'CONNECT_PRACTITIONER') {
@@ -772,18 +729,22 @@ What would you like to know more about?`;
   return (
     <>
       {/* Floating button when collapsed */}
+      {/* Floating button when collapsed */}
       {!isExpanded && (
         <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => setIsExpanded(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-50"
+          className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-[#1a4731] to-[#2c5e41] rounded-full shadow-2xl flex items-center justify-center z-50 border border-white/20 group overflow-hidden"
         >
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <svg className="w-7 h-7 text-[#e1dccc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           {threads.some(t => messages.some(m => !m.is_read && m.sender_id !== userId)) && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+            <span className="absolute top-3 right-3 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#141613] animate-pulse"></span>
           )}
         </motion.button>
       )}
@@ -792,31 +753,33 @@ What would you like to know more about?`;
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="fixed bottom-24 right-6 w-[400px] h-[600px] bg-[#141613]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-[100] overflow-hidden"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-t-2xl p-4 flex justify-between items-center">
+            <div className="p-4 bg-gradient-to-r from-[#1a4731] to-[#2c5e41] text-[#e1dccc] flex justify-between items-center shadow-md">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">🕉️</span>
+                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
+                  <span className="text-xl">🌿</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">
-                    {selectedThread?.practitioner_id ? 'Medical Consultation' : 'Health Assistant'}
+                  <h3 className="font-bold text-sm tracking-wide uppercase">
+                    {userDosha ? `${userDosha} Assistant` : 'Health Assistant'}
                   </h3>
-                  <p className="text-amber-100 text-xs">
-                    {isTyping ? 'Typing...' : selectedThread?.practitioner_id ? 'Connected to practitioner' : 'AI-powered support'}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                    <span className="text-[9px] text-emerald-200 font-bold uppercase tracking-tighter opacity-80 bg-white/10 px-1.5 py-0.5 rounded">Gemini 3 Flash</span>
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setIsExpanded(false)}
-                className="text-white/80 hover:text-white"
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                title="Close chat"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -870,44 +833,54 @@ What would you like to know more about?`;
                   transition={{ delay: idx * 0.05 }}
                   className={`flex ${msg.sender_id === userId && !msg.isBot ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[80%] shadow-lg ${msg.sender_id === userId && !msg.isBot
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl rounded-br-sm border-l-4 border-amber-300'
+                  <div className={`max-w-[85%] shadow-xl transform transition-all duration-300 ${msg.sender_id === userId && !msg.isBot
+                    ? 'bg-gradient-to-br from-[#1a4731] to-[#2c5e41] text-[#e1dccc] rounded-2xl rounded-tr-sm border border-white/20 shadow-emerald-900/20 hover:scale-[1.02]'
                     : msg.isBot
-                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-800 rounded-2xl rounded-bl-sm border-l-4 border-blue-400 border'
-                      : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl rounded-bl-sm border-l-4 border-green-300'
-                    } px-4 py-3`}>
+                      ? userDosha?.toLowerCase() === 'vata'
+                        ? 'bg-gradient-to-br from-[#3d2b1f] to-[#1a120b] text-[#e1dccc] rounded-2xl rounded-tl-sm border border-amber-500/30 shadow-amber-900/30'
+                        : userDosha?.toLowerCase() === 'pitta'
+                          ? 'bg-gradient-to-br from-[#1a3a3a] to-[#0d1f1f] text-[#e1dccc] rounded-2xl rounded-tl-sm border border-cyan-500/30 shadow-cyan-900/30'
+                          : userDosha?.toLowerCase() === 'kapha'
+                            ? 'bg-gradient-to-br from-[#2d3a1a] to-[#171f0d] text-[#e1dccc] rounded-2xl rounded-tl-sm border border-lime-500/30 shadow-lime-900/30'
+                            : 'bg-white/5 backdrop-blur-md text-[#e1dccc] rounded-2xl rounded-tl-sm border border-white/10'
+                      : 'bg-white/10 text-[#e1dccc] rounded-2xl rounded-tl-sm border border-white/10'
+                    } px-4 py-3 relative overflow-hidden group`}>
+
+                    {/* Interior decorative glow for bot messages */}
+                    {msg.isBot && (
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-white/10 transition-colors" />
+                    )}
                     {(msg.isBot || msg.sender_id !== userId) && (
-                      <div className={`flex items-center mb-2 ${msg.isBot ? 'text-blue-600' : 'text-white'
+                      <div className={`flex items-center mb-2 ${msg.isBot ? 'text-[#8c9489]' : 'text-[#8c9489]'
                         }`}>
-                        <span className="text-sm font-bold">
-                          {msg.isBot ? '🤖 AI Assistant' : msg.senderRole === 'practitioner' ? `👨‍⚕️ Dr. ${msg.senderName}` : `👤 ${msg.senderName}`}
+                        <span className="text-[10px] uppercase font-bold tracking-widest opacity-80">
+                          {msg.isBot ? '🤖 Assistant' : msg.senderRole === 'practitioner' ? `👨‍⚕️ Dr. ${msg.senderName}` : `👤 ${msg.senderName}`}
                         </span>
                       </div>
                     )}
 
-                    <div className={`${msg.isBot ? 'text-gray-800' : 'text-white'
-                      } leading-relaxed`}>
+                    <div className="text-[14px] leading-relaxed font-medium">
                       {/* Enhanced bot message formatting */}
                       {msg.isBot ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {msg.content.split('\n\n').map((paragraph, pIdx) => (
                             <div key={pIdx}>
                               {paragraph.split('\n').map((line, lIdx) => (
-                                <div key={lIdx} className={`${line.startsWith('**') ? 'font-bold text-blue-700 text-base mt-3 mb-2' :
-                                  line.startsWith('•') ? 'ml-4 text-gray-700 flex items-start' :
-                                    line.startsWith('✅') || line.startsWith('❌') ? 'ml-2 font-medium text-gray-800' :
-                                      line.startsWith('🔵') || line.startsWith('🔴') || line.startsWith('🟢') ? 'font-semibold text-gray-800 bg-white bg-opacity-50 rounded-lg p-2 my-1' :
-                                        'text-gray-700'
+                                <div key={lIdx} className={`${line.startsWith('**') ? 'font-bold text-emerald-400 text-base mt-2 mb-1' :
+                                  line.startsWith('•') ? 'ml-4 text-[#8c9489] flex items-start' :
+                                    line.startsWith('✅') || line.startsWith('❌') ? 'ml-2 font-medium text-[#e1dccc]' :
+                                      line.startsWith('🔵') || line.startsWith('🔴') || line.startsWith('🟢') ? 'font-semibold text-[#e1dccc] bg-white/5 rounded-lg p-2 my-1' :
+                                        'text-[#e1dccc]'
                                   }`}>
-                                  {line.startsWith('•') && <span className="text-blue-500 mr-2 font-bold">•</span>}
-                                  <span className={line.includes('**') ? 'font-semibold' : ''}>{line.replace(/\*\*/g, '')}</span>
+                                  {line.startsWith('•') && <span className="text-emerald-500 mr-2 font-bold">•</span>}
+                                  <span>{line.replace(/\*\*/g, '')}</span>
                                 </div>
                               ))}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
                     </div>
 
@@ -928,11 +901,9 @@ What would you like to know more about?`;
                 <div className="flex justify-start">
                   <div className="bg-gradient-to-r from-purple-100 to-pink-100 border-l-4 border-purple-400 rounded-2xl rounded-bl-sm px-4 py-3 shadow-md">
                     <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
+                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                       <span className="text-sm font-medium text-purple-700">AI is thinking...</span>
                     </div>
                   </div>
@@ -954,10 +925,10 @@ What would you like to know more about?`;
 
             {/* Quick actions */}
             {showQuickActions && selectedThread && messages.length <= 1 && (
-              <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-200">
-                <p className="text-sm font-semibold text-amber-800 mb-3">✨ Quick actions:</p>
+              <div className="p-3 bg-white/5 border-t border-white/5 backdrop-blur-sm">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-[#8c9489] mb-3 ml-1">Suggested Queries</p>
                 <div className="flex flex-wrap gap-2">
-                  {quickActions.map(action => (
+                  {getQuickActions().map(action => (
                     <button
                       key={action.id}
                       onClick={() => {
@@ -968,7 +939,7 @@ What would you like to know more about?`;
                           setShowQuickActions(false);
                         }
                       }}
-                      className="px-3 py-2 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 rounded-full text-sm font-medium text-amber-800 border border-amber-300 transition-all duration-200 transform hover:scale-105 shadow-sm"
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-xs font-bold text-[#e1dccc] border border-white/10 transition-all duration-200 transform hover:scale-105 shadow-sm"
                     >
                       {action.label}
                     </button>
@@ -978,41 +949,78 @@ What would you like to know more about?`;
             )}
 
             {/* Input area */}
-            <div className="p-4 bg-white border-t rounded-b-2xl">
+            <div className="p-4 bg-[#141613] border-t border-white/5 rounded-b-2xl">
               {!selectedThread ? (
                 <button
                   onClick={() => {
                     console.log('[ChatWidget] Bottom button clicked');
                     createThreadAndSend('Health Consultation');
                   }}
-                  className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg border-2 border-blue-400"
+                  className="w-full py-4 bg-gradient-to-r from-[#1a4731] via-[#2c5e41] to-[#1a4731] bg-[length:200%_auto] animate-gradient-x text-[#e1dccc] rounded-xl font-black uppercase tracking-widest hover:brightness-125 transition-all duration-300 transform hover:scale-[1.02] shadow-2xl border border-white/10 flex items-center justify-center space-x-3 overflow-hidden group"
                 >
-                  🚀 Start New Conversation
+                  <span className="relative z-10">🚀 Start Guided Consultation</span>
+                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 blur-xl opacity-20" />
                 </button>
               ) : (
-                <div className="flex space-x-2">
-                  <input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                    placeholder={selectedThread?.practitioner_id ? "Type your message..." : "Ask me anything about your health..."}
-                    className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-gray-50 focus:bg-white transition-all"
-                  />
-                  <button
-                    onClick={() => sendMessage()}
-                    disabled={!input.trim()}
-                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-amber-600 hover:to-amber-700 transition-all transform hover:scale-105 shadow-md"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
+                <div className="space-y-4">
+                  {/* Selected Image Preview */}
+                  {selectedImage && (
+                    <div className="relative inline-block mt-2 group">
+                      <img
+                        src={URL.createObjectURL(selectedImage)}
+                        alt="Preview"
+                        className="h-24 w-24 object-cover rounded-xl border-2 border-emerald-500/50 shadow-2xl transition-transform group-hover:scale-105"
+                      />
+                      <button
+                        onClick={() => setSelectedImage(null)}
+                        className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-rose-600 transition-colors border-2 border-[#141613]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-3 bg-white/5 p-2 rounded-2xl border border-white/10 focus-within:border-emerald-500/30 transition-all">
+                    <label className="cursor-pointer p-3 hover:bg-white/10 rounded-xl transition-all group relative overflow-hidden">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setSelectedImage(file);
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <svg className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </label>
+
+                    <input
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      placeholder={selectedImage ? "Describe this photo for Gemini 3..." : "Ask your Ayurvedic assistant..."}
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-[#e1dccc] placeholder-[#8c9489] text-sm font-semibold tracking-wide"
+                    />
+
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() && !selectedImage}
+                      className="p-3 bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-xl disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed hover:brightness-110 transition-all transform hover:scale-110 active:scale-90 shadow-lg shadow-emerald-900/40"
+                    >
+                      <svg className="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

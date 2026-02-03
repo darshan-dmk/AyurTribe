@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { authService } from '../../utils/supabase';
 import { Menu } from 'lucide-react';
+import { GlobalFooter } from '../GlobalFooter';
 
 export const AdminLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -40,8 +41,11 @@ export const AdminLayout: React.FC = () => {
                 )}
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-auto bg-stone-50">
-                    <Outlet />
+                <main className="flex-1 overflow-auto bg-stone-50 flex flex-col">
+                    <div className="flex-1">
+                        <Outlet />
+                    </div>
+                    <GlobalFooter className="border-t border-stone-200/50 bg-white" />
                 </main>
             </div>
         </div>

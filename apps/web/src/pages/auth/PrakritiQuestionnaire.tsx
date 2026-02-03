@@ -9,6 +9,7 @@ import api from '../../utils/api';
 import { Leaf, Wind, Droplet, Flame, Check, ArrowRight, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageSelector } from '../../components/LanguageSelector';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 interface Answer {
   questionId: string;
@@ -183,11 +184,11 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
 
   const handleSubmit = async () => {
     if (!canProceed()) {
-      setError(t('Please answer all questions before submitting'));
+      setError(t('error.answer_all'));
       return;
     }
     if (!userId) {
-      setError(t('User not authenticated. Please login again.'));
+      setError(t('error.auth_failed'));
       navigate('/auth/login');
       return;
     }
@@ -196,7 +197,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
     setIsSubmitting(true);
     setError('');
 
-    const toastId = toast.loading(t('Analyzing your Prakriti...'));
+    const toastId = toast.loading(t('assessment.analyzing_prakriti'));
 
     try {
       if (answers.length < 5) {
@@ -218,14 +219,14 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
       localStorage.removeItem('prakritiAnswers');
       localStorage.removeItem('prakritiPage');
 
-      toast.success(t('Analysis complete!'), { id: toastId });
+      toast.success(t('assessment.complete'), { id: toastId });
 
       if (response.questionnaire) {
         navigate('/patient/dashboard', {
           state: { prakritiScores: response.questionnaire.scores }
         });
       } else {
-        setError(t('Failed to process questionnaire results'));
+        setError(t('error.process_failed'));
       }
     } catch (err: any) {
       console.error('Failed to submit questionnaire:', err);
@@ -250,8 +251,8 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
         >
           <Leaf className="w-16 h-16 text-[#81B29A]" />
         </motion.div>
-        <h2 className="text-2xl font-medium tracking-wide">{t('Preparing your assessment...')}</h2>
-        <p className="mt-2 text-[#E07A5F]">{t('Connecting to Ayurveda wisdom')}</p>
+        <h2 className="text-2xl font-medium tracking-wide">{t('assessment.preparing')}</h2>
+        <p className="mt-2 text-[#E07A5F]">{t('assessment.connecting')}</p>
       </div>
     );
   }
@@ -280,11 +281,11 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
               <Leaf className="w-6 h-6 text-[#3D405B]" />
             </div>
             <h1 className="text-4xl md:text-5xl font-serif text-[#3D405B] mb-4 tracking-tight">
-              {t('Prakriti Assessment')}
+              {t('common.prakriti_assessment')}
             </h1>
             <p className="text-lg text-[#3D405B]/70 max-w-xl mx-auto leading-relaxed">
-              {t('Discover your unique Ayurvedic constitution (Dosha) through this mindful assessment.')}
-              {t('Be honest for the most accurate health insights.')}
+              {t('assessment.desc')}
+              {t('assessment.honest_desc')}
             </p>
           </motion.div>
         </header>
@@ -292,7 +293,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
         {/* Progress Bar */}
         <div className="mb-10 sticky top-4 z-20 bg-[#FDFBF7]/80 backdrop-blur-md py-4 px-6 rounded-2xl shadow-sm border border-[#3D405B]/5">
           <div className="flex justify-between items-center mb-2 text-sm font-medium text-[#3D405B]">
-            <span>{t('Progress')}</span>
+            <span>{t('common.progress')}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2 bg-[#3D405B]/10 rounded-full overflow-hidden">
@@ -304,8 +305,8 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
             />
           </div>
           <div className="flex justify-between mt-2 text-xs text-[#3D405B]/50">
-            <span>{t('Part 1: Physical Traits')}</span>
-            <span>{t('Part 2: Lifestyle & Mind')}</span>
+            <span>{t('assessment.part1')}</span>
+            <span>{t('assessment.part2')}</span>
           </div>
         </div>
 
@@ -407,7 +408,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
               className="flex items-center gap-2 px-6 py-3 rounded-xl text-[#3D405B] font-medium hover:bg-[#3D405B]/5 transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
-              {currentPage === 0 ? t('Back') : t('Previous Section')}
+              {currentPage === 0 ? t('actions.back') : t('actions.previous_section')}
             </button>
 
             {currentPage === 1 ? (
@@ -422,7 +423,7 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
                   }
                         `}
               >
-                {isSubmitting ? t('Analyzing...') : t('Complete Assessment')}
+                {isSubmitting ? t('common.analyzing') : t('actions.complete_assessment')}
                 {!isSubmitting && <Check className="w-5 h-5" />}
               </Button>
             ) : (
@@ -437,13 +438,14 @@ const PrakritiQuestionnaire: React.FC<{}> = () => {
                   }
                         `}
               >
-                {t('Next Section')}
+                {t('actions.next_section')}
                 <ArrowRight className="w-5 h-5" />
               </button>
             )}
           </div>
         </main>
       </div>
+      <GlobalFooter className="border-t border-[#3D405B]/10 bg-white" />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { profileService, UserProfile } from '../services/profileService';
 import { supabase } from '../utils/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ProfileManagerProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface ProfileManagerProps {
 }
 
 const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('personal');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,10 +36,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
   };
 
   const tabs = [
-    { id: 'personal', label: 'Personal Details', icon: '👤' },
-    { id: 'medical', label: 'Medical History', icon: '🏥' },
-    { id: 'lifestyle', label: 'Lifestyle', icon: '🌿' },
-    { id: 'emergency', label: 'Emergency Contact', icon: '🆘' },
+    { id: 'personal', label: t('profile.personal_details'), icon: '👤' },
+    { id: 'medical', label: t('profile.medical_history'), icon: '🏥' },
+    { id: 'lifestyle', label: t('profile.lifestyle'), icon: '🌿' },
+    { id: 'emergency', label: t('profile.emergency'), icon: '🆘' },
   ];
 
   useEffect(() => {
@@ -268,8 +270,8 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                   <span className="text-xl">👤</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[#e1dccc]">Ayurvedic Profile Manager</h2>
-                  <p className="text-[#8c9489] text-sm">Manage your personalized health information</p>
+                  <h2 className="text-xl font-bold text-[#e1dccc]">{t('profile.title')}</h2>
+                  <p className="text-[#8c9489] text-sm">{t('profile.desc')}</p>
                 </div>
               </motion.div>
 
@@ -353,7 +355,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                     <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
                   </svg>
                   <div>
-                    <p className="font-medium">Error Loading Profile</p>
+                    <p className="font-medium">{t('profile.error_loading')}</p>
                     <p className="text-xs mt-1">{error}</p>
                     {userId && <p className="text-xs mt-1">User ID: {userId}</p>}
                   </div>
@@ -390,7 +392,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                 <div className="flex items-center justify-center h-96">
                   <div className="text-center">
                     <div className="w-16 h-16 border-4 border-[#a3b18a] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-[#e1dccc] mt-4 font-medium">Loading your Ayurvedic profile...</p>
+                    <p className="text-[#e1dccc] mt-4 font-medium">{t('profile.loading')}</p>
                   </div>
                 </div>
               ) : !formData ? (
@@ -401,13 +403,13 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <p className="text-[#e1dccc] font-semibold">No profile data found</p>
-                    <p className="text-[#8c9489] text-sm mt-2">User ID: {userId || 'Not available'}</p>
+                    <p className="text-[#e1dccc] font-semibold">{t('profile.no_data')}</p>
+                    <p className="text-[#8c9489] text-sm mt-2">{t('profile.user_id')}: {userId || 'Not available'}</p>
                     <button
                       onClick={handleRefresh}
                       className="mt-4 px-4 py-2 bg-[#2c332b] text-[#e1dccc] border border-[#3d453b] rounded-lg hover:bg-[#3d453b] transition-colors"
                     >
-                      Try Refreshing
+                      {t('profile.try_refresh')}
                     </button>
                   </div>
                 </div>
@@ -427,12 +429,12 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                     >
                       <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
                         <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
-                          <span>📝</span> Personal Information
+                          <span>📝</span> {t('profile.personal')}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">First Name</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.first_name')}</label>
                             <input
                               type="text"
                               name="first_name"
@@ -442,7 +444,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Last Name</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.last_name')}</label>
                             <input
                               type="text"
                               name="last_name"
@@ -453,7 +455,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Email (Read-only)</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.email_readonly')}</label>
                             <input
                               type="email"
                               name="email"
@@ -463,7 +465,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Phone (Read-only)</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.phone_readonly')}</label>
                             <input
                               type="tel"
                               name="phone"
@@ -474,7 +476,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Date of Birth</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.dob')}</label>
                             <input
                               type="date"
                               name="date_of_birth"
@@ -484,41 +486,41 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Gender</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.gender')}</label>
                             <select
                               name="gender"
                               value={formData?.gender || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
-                              <option value="">Select Gender</option>
-                              <option value="male">Male</option>
-                              <option value="female">Female</option>
-                              <option value="other">Other</option>
+                              <option value="">{t('profile.select_gender')}</option>
+                              <option value="male">{t('profile.male')}</option>
+                              <option value="female">{t('profile.female')}</option>
+                              <option value="other">{t('profile.other')}</option>
                             </select>
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Address</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.address')}</label>
                             <textarea
                               name="address"
                               value={formData?.address || ''}
                               onChange={handleProfileChange}
                               rows={2}
-                              placeholder="Enter your address"
+                              placeholder={t('profile.enter_address')}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Occupation</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.occupation')}</label>
                             <input
                               type="text"
                               name="occupation"
                               value={formData?.occupation || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
-                              placeholder="Your occupation"
+                              placeholder={t('profile.your_occupation')}
                             />
                           </div>
                         </div>
@@ -535,14 +537,14 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                     >
                       <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
                         <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
-                          <span>🩺</span> Medical History
+                          <span>🩺</span> {t('profile.medical')}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Chronic Conditions</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.chronic_conditions')}</label>
                             <textarea
-                              placeholder="Comma-separated (e.g., Diabetes, Hypertension)"
+                              placeholder={t('profile.chronic_placeholder')}
                               value={Array.isArray(formData?.chronic_conditions) ? formData.chronic_conditions.join(', ') : (formData?.chronic_conditions || '')}
                               onChange={(e) => handleArrayFieldChange('chronic_conditions', e.target.value)}
                               rows={3}
@@ -551,9 +553,9 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Allergies</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.allergies')}</label>
                             <textarea
-                              placeholder="Comma-separated (e.g., Penicillin, Pollen)"
+                              placeholder={t('profile.allergies_placeholder')}
                               value={Array.isArray(formData?.allergies) ? formData.allergies.join(', ') : (formData?.allergies || '')}
                               onChange={(e) => handleArrayFieldChange('allergies', e.target.value)}
                               rows={3}
@@ -562,9 +564,9 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Family History</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.family_history')}</label>
                             <textarea
-                              placeholder="Comma-separated (e.g., Heart disease, Diabetes)"
+                              placeholder={t('profile.family_placeholder')}
                               value={Array.isArray(formData?.family_history) ? formData.family_history.join(', ') : (formData?.family_history || '')}
                               onChange={(e) => handleArrayFieldChange('family_history', e.target.value)}
                               rows={3}
@@ -573,10 +575,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Current Medications</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.current_medications')}</label>
                             <input
                               type="text"
-                              placeholder="Comma-separated (e.g., Aspirin 100mg, Metformin 500mg)"
+                              placeholder={t('profile.meds_placeholder')}
                               value={Array.isArray(formData?.current_medications) ? formData.current_medications.join(', ') : (typeof formData?.current_medications === 'string' ? formData.current_medications : '')}
                               onChange={(e) => handleArrayFieldChange('current_medications', e.target.value)}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
@@ -584,10 +586,10 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Previous Surgeries</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.previous_surgeries')}</label>
                             <input
                               type="text"
-                              placeholder="Comma-separated (e.g., Appendectomy (2015), Wisdom tooth extraction (2020))"
+                              placeholder={t('profile.surgeries_placeholder')}
                               value={Array.isArray(formData?.previous_surgeries) ? formData.previous_surgeries.join(', ') : (typeof formData?.previous_surgeries === 'string' ? formData.previous_surgeries : '')}
                               onChange={(e) => handleArrayFieldChange('previous_surgeries', e.target.value)}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
@@ -598,7 +600,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
 
                       <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
                         <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
-                          <span>💊</span> Ayurvedic Treatment History
+                          <span>💊</span> {t('profile.ayur_treatment_history')}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -611,9 +613,9 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                                 onChange={handleProfileChange}
                                 className="rounded text-[#a3b18a] focus:ring-[#4a5548]"
                               />
-                              <span className="font-medium">Previous Ayurvedic Treatment</span>
+                              <span className="font-medium">{t('profile.prev_ayur_treatment')}</span>
                             </label>
-                            <p className="text-xs text-[#8c9489] mt-1">Check if you've had Ayurvedic treatments before</p>
+                            <p className="text-xs text-[#8c9489] mt-1">{t('profile.prev_ayur_treatment_desc')}</p>
                           </div>
                         </div>
                       </div>
@@ -629,79 +631,79 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                     >
                       <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
                         <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
-                          <span>🏃</span> Lifestyle Factors
+                          <span>🏃</span> {t('profile.lifestyle')}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Exercise Frequency</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.exercise_freq')}</label>
                             <select
                               name="exercise_frequency"
                               value={formData?.exercise_frequency || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
-                              <option value="">Select frequency</option>
-                              <option value="daily">Daily</option>
-                              <option value="weekly">Several times a week</option>
-                              <option value="monthly">Occasionally</option>
-                              <option value="rarely">Rarely</option>
-                              <option value="never">Never</option>
+                              <option value="">{t('profile.select_freq')}</option>
+                              <option value="daily">{t('profile.daily')}</option>
+                              <option value="weekly">{t('profile.weekly')}</option>
+                              <option value="monthly">{t('profile.monthly')}</option>
+                              <option value="rarely">{t('profile.rarely')}</option>
+                              <option value="never">{t('profile.never')}</option>
                             </select>
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Sleep Pattern</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.sleep_pattern')}</label>
                             <select
                               name="sleep_pattern"
                               value={formData?.sleep_pattern || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
-                              <option value="">Select pattern</option>
-                              <option value="excellent">Excellent (7-9 hours)</option>
-                              <option value="good">Good (6-7 hours)</option>
-                              <option value="fair">Fair (5-6 hours)</option>
-                              <option value="poor">Poor (&lt;5 hours)</option>
-                              <option value="irregular">Irregular</option>
+                              <option value="">{t('profile.select_pattern')}</option>
+                              <option value="excellent">{t('profile.excellent_sleep')}</option>
+                              <option value="good">{t('profile.good_sleep')}</option>
+                              <option value="fair">{t('profile.fair_sleep')}</option>
+                              <option value="poor">{t('profile.poor_sleep')}</option>
+                              <option value="irregular">{t('profile.irregular_sleep')}</option>
                             </select>
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Smoking Status</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.smoking_status')}</label>
                             <select
                               name="smoking_status"
                               value={formData?.smoking_status || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
-                              <option value="">Select status</option>
-                              <option value="never">Never smoked</option>
-                              <option value="former">Former smoker</option>
-                              <option value="occasional">Occasional smoker</option>
-                              <option value="regular">Regular smoker</option>
+                              <option value="">{t('profile.select_status')}</option>
+                              <option value="never">{t('profile.never_smoked')}</option>
+                              <option value="former">{t('profile.former_smoker')}</option>
+                              <option value="occasional">{t('profile.occasional_smoker')}</option>
+                              <option value="regular">{t('profile.regular_smoker')}</option>
                             </select>
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Alcohol Consumption</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.alcohol_consumption')}</label>
                             <select
                               name="alcohol_consumption"
                               value={formData?.alcohol_consumption || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19]"
                             >
-                              <option value="">Select consumption</option>
-                              <option value="never">Never</option>
-                              <option value="rarely">Rarely</option>
-                              <option value="socially">Socially</option>
-                              <option value="regularly">Regularly</option>
-                              <option value="heavily">Heavily</option>
+                              <option value="">{t('profile.select_consumption')}</option>
+                              <option value="never">{t('profile.never')}</option>
+                              <option value="rarely">{t('profile.rarely')}</option>
+                              <option value="socially">{t('profile.socially')}</option>
+                              <option value="regularly">{t('profile.regularly')}</option>
+                              <option value="heavily">{t('profile.heavily')}</option>
                             </select>
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Stress Level</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.stress_level')}</label>
                             <div className="flex items-center gap-3">
                               <input
                                 type="range"
@@ -717,15 +719,15 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                               </span>
                             </div>
                             <div className="flex justify-between text-xs text-[#8c9489] mt-1">
-                              <span>Low</span>
-                              <span>High</span>
+                              <span>{t('profile.low')}</span>
+                              <span>{t('profile.high')}</span>
                             </div>
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Dietary Preferences</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.dietary_preferences')}</label>
                             <textarea
-                              placeholder="Comma-separated (e.g., Vegetarian, Vegan, Gluten-free)"
+                              placeholder={t('profile.diet_placeholder')}
                               value={Array.isArray(formData?.dietary_preferences) ? formData.dietary_preferences.join(', ') : (formData?.dietary_preferences || '')}
                               onChange={(e) => handleArrayFieldChange('dietary_preferences', e.target.value)}
                               rows={2}
@@ -737,14 +739,14 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
 
                       <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
                         <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
-                          <span>🎯</span> Health Goals
+                          <span>🎯</span> {t('profile.health_goals')}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Specific Health Concerns</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.specific_concerns')}</label>
                             <textarea
-                              placeholder="Comma-separated health concerns (e.g., Acne, Weight loss)"
+                              placeholder={t('profile.concerns_placeholder')}
                               value={Array.isArray(formData?.specific_concerns) ? formData.specific_concerns.join(', ') : (formData?.specific_concerns || '')}
                               onChange={(e) => handleArrayFieldChange('specific_concerns', e.target.value)}
                               rows={3}
@@ -753,9 +755,9 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Treatment Goals</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.treatment_goals')}</label>
                             <textarea
-                              placeholder="Comma-separated treatment goals (e.g., Better sleep, Weight management)"
+                              placeholder={t('profile.goals_placeholder')}
                               value={Array.isArray(formData?.treatment_goals) ? formData.treatment_goals.join(', ') : (formData?.treatment_goals || '')}
                               onChange={(e) => handleArrayFieldChange('treatment_goals', e.target.value)}
                               rows={3}
@@ -776,43 +778,43 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                     >
                       <div className="bg-gradient-to-br from-[#1c211b] to-[#141613] p-6 rounded-xl border border-[#2c332b]">
                         <h3 className="text-lg font-bold text-[#e1dccc] mb-4 flex items-center gap-2">
-                          <span>🆘</span> Emergency Contact Information
+                          <span>🆘</span> {t('profile.emergency')}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Emergency Contact Name</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.emergency_name')}</label>
                             <input
                               type="text"
                               name="emergency_name"
                               value={formData?.emergency_name || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
-                              placeholder="Full name of emergency contact"
+                              placeholder={t('profile.emergency_name_placeholder')}
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Emergency Contact Phone</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.emergency_phone')}</label>
                             <input
                               type="tel"
                               name="emergency_contact"
                               value={formData?.emergency_contact || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
-                              placeholder="+91 XXXXX XXXXX"
+                              placeholder={t('profile.emergency_phone_placeholder')}
                             />
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">Relationship</label>
+                            <label className="block text-sm font-semibold text-[#e1dccc] mb-2">{t('profile.relationship')}</label>
                             <input
                               type="text"
                               name="emergency_relation"
                               value={formData?.emergency_relation || ''}
                               onChange={handleProfileChange}
                               className="w-full px-4 py-2 border border-[#2c332b] rounded-lg focus:ring-2 focus:ring-[#4a5548] focus:border-transparent text-[#e1dccc] bg-[#1a1c19] placeholder-[#5c635b]"
-                              placeholder="e.g., Spouse, Parent, Sibling"
+                              placeholder={t('profile.relationship_placeholder')}
                             />
                           </div>
                         </div>
@@ -843,7 +845,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                   onClick={onClose}
                   className="px-6 py-2 border border-[#3d453b] text-[#8c9489] rounded-lg hover:bg-[#2c332b] hover:text-[#e1dccc] transition-colors font-medium"
                 >
-                  Cancel
+                  {t('actions.cancel')}
                 </motion.button>
 
                 <motion.button
@@ -859,14 +861,14 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ isOpen, onClose }) => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Saving...
+                      {t('common.saving')}
                     </>
                   ) : (
                     <>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Save Changes
+                      {t('profile.save')}
                     </>
                   )}
                 </motion.button>

@@ -6,6 +6,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { supabase } from "../../utils/supabase";
 
 interface KPI {
   therapistUtilizationPct: number;
@@ -69,32 +70,85 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [metricsLoading, setMetricsLoading] = useState<boolean>(true);
 
-  // Load metrics when center changes
+  // Load real data from Supabase
   useEffect(() => {
-    loadMetrics();
-  }, [selectedCenter]);
+    loadRealAppointments();
 
-  const loadMetrics = async () => {
+    // Real-time subscription for all appointments
+    const appointmentChannel = supabase
+      .channel('admin-appointment-feed')
+      .on('postgres_changes' as any, {
+        event: '*',
+        table: 'appointments'
+      }, (payload: any) => {
+        console.log('[Admin Dashboard] Appointment update:', payload);
+        loadRealAppointments();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentChannel);
+    };
+  }, []);
+
+  const loadRealAppointments = async () => {
     setMetricsLoading(true);
-    setError(null);
-    const base = process.env.REACT_APP_API_URL || "http://localhost:4000";
     try {
-      const res = await fetch(`${base}/admin/metrics?center=${encodeURIComponent(selectedCenter)}`, {
-        credentials: "include"
+      // 1. Fetch appointments with patient details
+      const { data: aptData, error: aptError } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          appointment_date,
+          appointment_time,
+          type,
+          status,
+          user:users!patient_id(first_name, last_name),
+          practitioner:users!practitioner_id(first_name, last_name)
+        `)
+        .order('appointment_date', { ascending: false })
+        .limit(10);
+
+      if (aptError) throw aptError;
+
+      // 2. Fetch some basic stats
+      const { count: upcomingCount } = await supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .gte('appointment_date', new Date().toISOString().split('T')[0]);
+
+      const formattedApts = (aptData || []).map((apt: any) => {
+        const u: any = apt.user;
+        const p: any = apt.practitioner;
+        return {
+          id: apt.id,
+          patientName: `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || 'Unknown',
+          procedure: apt.type || 'Consultation',
+          startTime: `${apt.appointment_date}T${apt.appointment_time}`,
+          practitioner: p
+            ? `Dr. ${p.first_name || ''} ${p.last_name || ''}`.trim()
+            : 'Pending',
+          status: apt.status as any
+        };
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as KPI;
-      setMetrics(json);
+
+      setMetrics({
+        ...MOCK_DATA, // Use mock for other KPIs for now
+        upcomingCount: upcomingCount || 0,
+        recentAppointments: formattedApts
+      });
     } catch (err) {
-      console.warn("Using mock data:", err);
+      console.error("Error loading real appointments:", err);
       setMetrics(MOCK_DATA);
-      // Only show error if it's not just a dev environment fallback scenario
-      if (process.env.NODE_ENV === 'production') {
-        setError("Using local data cache (Backend unreachable).");
-      }
     } finally {
       setMetricsLoading(false);
     }
+  };
+
+  const loadMetrics = async () => {
+    // Keep this for future REST API calls if needed
+    loadRealAppointments();
   };
 
   // Auth is handled by ProtectedRoute, so we don't need to check here

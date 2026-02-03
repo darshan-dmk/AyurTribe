@@ -7,6 +7,7 @@ import {
   ArrowRight, CheckCircle, Activity, Heart, Clock
 } from "lucide-react";
 import { Button } from '../../components/ui/Button';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 const Intro: React.FC = () => {
   const navigate = useNavigate();
@@ -39,16 +40,16 @@ const Intro: React.FC = () => {
             </div>
             <div>
               <div className="text-xl font-bold tracking-tight text-stone-900 leading-none">
-                {t("Ayur Tribe")}
+                {t("app_name")}
               </div>
               <div className="text-xs font-medium text-emerald-700 tracking-wide uppercase mt-0.5">
-                {t("Ayurveda & Wellness")}
+                {t("subtitle")}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="relative hidden md:block">
+            <div className="relative">
               <LanguageSelector />
             </div>
 
@@ -85,18 +86,18 @@ const Intro: React.FC = () => {
               <div className="space-y-8 animate-fade-in-up">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/50 border border-emerald-200 text-emerald-800 text-xs font-semibold uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                  {t('New Generational Health')}
+                  {t('landing.hero_tag')}
                 </div>
 
                 <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-stone-900 leading-[1.1]">
-                  {t('Holistic Health,')} <br />
+                  {t('landing.hero_title_1')} <br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-700">
-                    {t('Defined by Nature.')}
+                    {t('landing.hero_title_2')}
                   </span>
                 </h1>
 
                 <p className="text-xl text-stone-600 leading-relaxed max-w-lg">
-                  {t("Experience the perfect synergy of ancient Ayurvedic wisdom and modern medical science. Personalized care, simplified.")}
+                  {t('landing.hero_desc')}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -108,7 +109,7 @@ const Intro: React.FC = () => {
                       className="relative w-full sm:w-auto justify-center shadow-lg"
                       rightIcon={<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
                     >
-                      {t("Start Your Journey")}
+                      {t('landing.cta_primary')}
                     </Button>
                   </div>
 
@@ -118,18 +119,18 @@ const Intro: React.FC = () => {
                     onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                     className="w-full sm:w-auto"
                   >
-                    {t('Learn More')}
+                    {t('landing.cta_secondary')}
                   </Button>
                 </div>
 
                 <div className="flex items-center gap-6 pt-4 text-sm font-medium text-stone-500">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    <span>{t('Free Prakriti Analysis')}</span>
+                    <span>{t('landing.feature_prakriti')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    <span>{t('Expert Guidance')}</span>
+                    <span>{t('landing.feature_scheduling')}</span>
                   </div>
                 </div>
               </div>
@@ -143,8 +144,8 @@ const Intro: React.FC = () => {
 
                   <div className="relative z-10 space-y-6">
                     <div className="space-y-2 text-center pb-4 border-b border-stone-100">
-                      <h3 className="text-2xl font-bold text-stone-900">{t("Get Started")}</h3>
-                      <p className="text-stone-500">{t("Join thousands on their journey")}</p>
+                      <h3 className="text-2xl font-bold text-stone-900">{t('nav.get_started')}</h3>
+                      <p className="text-stone-500">{t('landing.hero_tag')}</p>
                     </div>
 
                     <div className="space-y-4">
@@ -156,7 +157,7 @@ const Intro: React.FC = () => {
                         onClick={() => navigate("/auth/register")}
                         rightIcon={<ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />}
                       >
-                        {t('Create Account')}
+                        {t('auth.create_account')}
                       </Button>
 
                       <Button
@@ -165,13 +166,13 @@ const Intro: React.FC = () => {
                         className="w-full justify-center bg-white hover:bg-stone-50"
                         onClick={() => navigate("/auth/login")}
                       >
-                        {t('Sign In')}
+                        {t('auth.sign_in')}
                       </Button>
                     </div>
 
                     <div className="text-center pt-2">
                       <p className="text-xs text-stone-400">
-                        {t('By continuing, you agree to our')} <a href="#" className="underline hover:text-emerald-700">{t('Terms')}</a> & <a href="#" className="underline hover:text-emerald-700">{t('Privacy Policy')}</a>
+                        {t('auth.continue_agreement')} <a href="#" className="underline hover:text-emerald-700">{t('auth.terms')}</a> & <a href="#" className="underline hover:text-emerald-700">{t('auth.privacy')}</a>
                       </p>
                     </div>
                   </div>
@@ -181,16 +182,16 @@ const Intro: React.FC = () => {
                 <div className="absolute -right-4 top-20 bg-white p-4 rounded-2xl shadow-xl border border-stone-100 flex items-center gap-3 animate-float delay-100 hidden sm:flex">
                   <div className="bg-amber-100 p-2 rounded-full text-amber-600"><Flame className="w-5 h-5" /></div>
                   <div>
-                    <div className="text-xs text-stone-500 font-medium">Prakriti</div>
-                    <div className="text-sm font-bold text-stone-800">Pitta Dominant</div>
+                    <div className="text-xs text-stone-500 font-medium">{t('prakriti.constitution')}</div>
+                    <div className="text-sm font-bold text-stone-800">{t('prakriti.pitta')} {t('prakriti.dominant')}</div>
                   </div>
                 </div>
 
                 <div className="absolute -left-8 bottom-32 bg-white p-4 rounded-2xl shadow-xl border border-stone-100 flex items-center gap-3 animate-float delay-300 hidden sm:flex">
                   <div className="bg-emerald-100 p-2 rounded-full text-emerald-700"><Leaf className="w-5 h-5" /></div>
                   <div>
-                    <div className="text-xs text-stone-500 font-medium">{t('Wellness Score')}</div>
-                    <div className="text-sm font-bold text-stone-800">{t('Excellent')}</div>
+                    <div className="text-xs text-stone-500 font-medium">Wellness Score</div>
+                    <div className="text-sm font-bold text-stone-800">Excellent</div>
                   </div>
                 </div>
               </div>
@@ -202,47 +203,47 @@ const Intro: React.FC = () => {
         <section id="features" className="py-24 bg-white relative">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">{t('Complete Health Management')}</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">{t('landing.hero_title_1')}</h2>
               <p className="text-lg text-stone-600">
-                {t('Everything you need to manage your health journey, from simplified scheduling to deep Ayurvedic insights.')}
+                {t('landing.hero_desc')}
               </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
               <FeatureCard
                 icon={Users}
-                title={t("Prakriti Analysis")}
-                desc={t("Discover your unique body constitution through our advanced AI-driven questionnaire.")}
+                title={t("landing.feature_prakriti")}
+                desc={t("landing.feature_prakriti_desc")}
                 color="bg-amber-50 text-amber-700"
               />
               <FeatureCard
                 icon={Calendar}
-                title={t("Smart Scheduling")}
-                desc={t("Book appointments seamlessly with top practitioners based on your availability.")}
+                title={t("landing.feature_scheduling")}
+                desc={t("landing.feature_scheduling_desc")}
                 color="bg-emerald-50 text-emerald-700"
               />
               <FeatureCard
                 icon={Shield}
-                title={t("Secure & Private")}
-                desc={t("Your health data is encrypted and protected with enterprise-grade security.")}
+                title={t("landing.feature_secure")}
+                desc={t("landing.feature_secure_desc")}
                 color="bg-blue-50 text-blue-700"
               />
               <FeatureCard
                 icon={Activity}
-                title={t("Health Tracking")}
-                desc={t("Monitor your vitals, sleep, and nutrition progress over time with intuitive charts.")}
+                title={t("dashboard.health_metrics")}
+                desc={t("landing.feature_secure_desc")} // Reusing desc for now
                 color="bg-purple-50 text-purple-700"
               />
               <FeatureCard
                 icon={Heart}
-                title={t("Personalized Care")}
-                desc={t("Get diet and lifestyle recommendations tailored specifically to your Prakriti.")}
+                title={t("landing.feature_personalized")}
+                desc={t("landing.feature_personalized_desc")}
                 color="bg-rose-50 text-rose-700"
               />
               <FeatureCard
                 icon={Clock}
-                title={t("24/7 Support")}
-                desc={t("Access automated support and resources whenever you need them, day or night.")}
+                title={t("landing.feature_support")}
+                desc={t("landing.feature_support_desc")}
                 color="bg-teal-50 text-teal-700"
               />
             </div>
@@ -328,35 +329,35 @@ const Intro: React.FC = () => {
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <img src="/ayurtribelogo.png" alt="Ayur Tribe" className="h-10 w-10 p-1 rounded-lg bg-[#1a4731] object-contain" />
-                <span className="font-bold text-lg text-stone-900">Ayur Tribe</span>
+                <span className="font-bold text-lg text-stone-900">{t('app_name')}</span>
               </div>
               <p className="text-sm text-stone-500">
-                Integrating ancient wisdom with modern healthcare technology.
+                {t('landing.hero_desc')}
               </p>
             </div>
 
             <div>
               <h4 className="font-bold text-stone-900 mb-4">Platform</h4>
               <ul className="space-y-2 text-sm text-stone-600">
-                <li><a href="#" className="hover:text-emerald-700">Home</a></li>
-                <li><a href="#" className="hover:text-emerald-700">Features</a></li>
-                <li><a href="#" className="hover:text-emerald-700">Practitioners</a></li>
-                <li><a href="#" className="hover:text-emerald-700">Pricing</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("nav.home")}</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("nav.features")}</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("nav.practitioners")}</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("nav.pricing")}</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-bold text-stone-900 mb-4">Resources</h4>
+              <h4 className="font-bold text-stone-900 mb-4">{t("footer.resources")}</h4>
               <ul className="space-y-2 text-sm text-stone-600">
-                <li><a href="#" className="hover:text-emerald-700">Blog</a></li>
-                <li><a href="#" className="hover:text-emerald-700">Knowledge Base</a></li>
-                <li><a href="#" className="hover:text-emerald-700">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-emerald-700">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("footer.blog")}</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("footer.knowledge_base")}</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("auth.privacy")}</a></li>
+                <li><a href="#" className="hover:text-emerald-700">{t("auth.terms")}</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-bold text-stone-900 mb-4">Contact</h4>
+              <h4 className="font-bold text-stone-900 mb-4">{t("footer.contact")}</h4>
               <p className="text-sm text-stone-600 mb-2">support@ayurtribe.com</p>
               <p className="text-sm text-stone-600">1-800-AYURVEDA</p>
             </div>
@@ -364,17 +365,20 @@ const Intro: React.FC = () => {
 
           <div className="border-t border-stone-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-stone-500">
-              © {new Date().getFullYear()} Ayur Tribe. All rights reserved.
+              © {new Date().getFullYear()} {t('app_name')}. {t('landing.footer_rights')}
             </div>
             <div className="flex gap-6">
               <button onClick={() => navigate("/auth/login")} className="text-sm font-medium text-stone-500 hover:text-emerald-700 transition-colors">
-                {t('Practitioner Login')}
+                {t('nav.practitioner_login')}
               </button>
               <button onClick={() => navigate("/auth/login")} className="text-sm font-medium text-stone-500 hover:text-emerald-700 transition-colors">
-                {t('Admin Login')}
+                {t('nav.admin_login')}
               </button>
             </div>
           </div>
+
+          {/* Global Branding */}
+          <GlobalFooter className="!py-6 pt-12 border-t border-stone-100 mt-8" />
         </div>
       </footer>
     </div>

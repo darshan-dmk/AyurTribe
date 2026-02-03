@@ -5,6 +5,7 @@ import { ToastProvider } from './components/ToastProvider';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { TranslationOverlay } from './components/TranslationOverlay';
 
 // Intro / Landing
 import Intro from './pages/auth/Intro';
@@ -20,6 +21,7 @@ import PatientDashboard from './pages/patient/Dashboard';
 import AppointmentBooking from './pages/patient/AppointmentBooking';
 import PatientNutrition from './pages/patient/Nutrition';
 import PractitionerDashboard from './pages/practitioner/Dashboard';
+import PractitionerPatients from './pages/practitioner/Patients';
 import NutritionManagement from './pages/practitioner/NutritionManagement';
 import AdminDashboard from './pages/admin/Dashboard';
 import ReceptionistDashboard from './pages/receptionist/Dashboard';
@@ -27,9 +29,12 @@ import { AdminLayout } from './components/admin/AdminLayout';
 import StaffManagement from './pages/admin/StaffManagement';
 
 // Admin Pages
-import Patients from './pages/admin/Patients';
+import AdminPatients from './pages/admin/Patients';
 import Treatments from './pages/admin/Treatments';
 import Reports from './pages/admin/Reports';
+
+// Settings
+import LanguageSettings from './pages/settings/LanguageSettings';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{
@@ -77,6 +82,7 @@ function App() {
         <ToastProvider>
           <LanguageProvider>
             <div className="min-h-screen">
+              <TranslationOverlay />
               <Routes>
                 {/* Intro / Landing Page (default) */}
                 <Route path="/" element={<Intro />} />
@@ -129,6 +135,7 @@ function App() {
                     <ProtectedRoute allowedRoles={['practitioner']}>
                       <Routes>
                         <Route path="dashboard" element={<PractitionerDashboard />} />
+                        <Route path="patients" element={<PractitionerPatients />} />
                         <Route path="nutrition" element={<NutritionManagement />} />
                       </Routes>
                     </ProtectedRoute>
@@ -157,11 +164,13 @@ function App() {
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="staff" element={<StaffManagement />} />
-                  <Route path="patients" element={<Patients />} />
+                  <Route path="patients" element={<AdminPatients />} />
                   <Route path="treatments" element={<Treatments />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Route>
+
+                <Route path="/settings/language" element={<LanguageSettings />} />
 
                 {/* Default fallback */}
                 <Route path="*" element={<Navigate to="/auth/login" replace />} />

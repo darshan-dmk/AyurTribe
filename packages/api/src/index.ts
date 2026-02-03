@@ -3,12 +3,13 @@ import dotenv from 'dotenv';
 
 // Force dotenv to load from this package's .env file
 import path from 'path';
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 // Debug: log important env values
 console.log("Loaded SUPABASE_URL:", process.env.SUPABASE_URL || "<missing>");
 console.log("Loaded EMAIL_USER:", process.env.EMAIL_USER || "<missing>");
 
+// process.env.GEMINI_API_KEY = ... (handled by dotenv)
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -21,6 +22,8 @@ import questionnaireRoutes from './routes/questionnaire';
 import chatRoutes from './routes/chat';
 import nutritionRoutes from './routes/nutrition';
 import adminRoutes from './routes/adminRoutes'; // Import admin routes
+import translationRoutes from './routes/translation';
+import aiChatRoutes from './routes/aiChat';
 import { authMiddleware } from './middlewares/authMiddleware';
 import { supabase } from './db/supabaseClient';
 
@@ -68,6 +71,8 @@ app.use('/api/questionnaire', questionnaireRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/nutrition', nutritionRoutes);
 app.use('/api/admin', adminRoutes); // Mount admin routes
+app.use('/api/translation', translationRoutes);
+app.use('/api/ai-chat', aiChatRoutes);
 
 // Example protected route
 app.get('/me', authMiddleware, (req: Request, res: Response) => {
@@ -155,6 +160,7 @@ function start() {
     console.log('  - POST /api/nutrition/feedback');
     console.log('  - POST /api/nutrition/dietitian/recommendations');
     console.log('  - GET  /api/nutrition/dietitian/recommendations');
+    console.log('  - POST /api/translation/translate');
     console.log('  - WS   /ws (WebSocket)');
   });
 }

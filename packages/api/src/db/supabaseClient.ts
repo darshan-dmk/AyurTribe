@@ -8,9 +8,9 @@ import fetch from 'node-fetch';
 // Always load .env explicitly
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL || "https://yrgmfzkfrezfminbdfnz.supabase.co";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyZ21memtmcmV6Zm1pbmJkZm56Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzcwMjMxNiwiZXhwIjoyMDczMjc4MzE2fQ.HrEtLWAy8kz5pkI722K-tiL8Ckp-DHIXcjVzWfpDBuY";
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyZ21memtmcmV6Zm1pbmJkZm56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3MDIzMTYsImV4cCI6MjA3MzI3ODMxNn0.zZyxovDpKEL7FeyYvQZucKd_JwIFkwiN6Y1q5CClvwo";
+const supabaseUrl = process.env.SUPABASE_URL || "https://vsuoeqyazbymkwnjaeaf.supabase.co";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdW9lcXlhemJ5bWt3bmphZWFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTg1MjIwNSwiZXhwIjoyMDg1NDI4MjA1fQ.J6y0QvcIuway0M2SFASwH7rvDrSGAQUaLO4rnzU7SII";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdW9lcXlhemJ5bWt3bmphZWFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4NTIyMDUsImV4cCI6MjA4NTQyODIwNX0.nk1JTc8QxlSXATMfUQgm6yGBAkzEQrcyJYmhUsmuIgo";
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing required environment variables:');

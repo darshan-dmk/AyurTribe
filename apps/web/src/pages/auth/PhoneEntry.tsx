@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { validatePhone } from '../../utils/phone';
 import { useLocation } from 'react-router-dom';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 const PhoneEntry: React.FC = () => {
   const [mode, setMode] = useState<'phone' | 'email'>('phone');
@@ -345,6 +346,7 @@ const PhoneEntry: React.FC = () => {
             </div>
           )}
         </div>
+        <GlobalFooter dark className="absolute bottom-4 left-0 right-0 z-30" />
       </div>
     </>
   );

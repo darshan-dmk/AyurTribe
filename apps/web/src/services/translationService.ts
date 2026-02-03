@@ -1,39 +1,47 @@
-import axios from 'axios';
+import api from '../utils/api';
+// Indian Languages Mapping for IndicTrans2 (FLORES-200 codes) - Keeping for reference
+export const INDIC_LANG_MAPPING: { [key: string]: string } = {
+    'en': 'English',
+    'hi': 'Hindi',
+    'kn': 'Kannada',
+    'te': 'Telugu',
+    'ta': 'Tamil',
+    'ml': 'Malayalam',
+    'mr': 'Marathi',
+    'bn': 'Bengali',
+    'gu': 'Gujarati',
+    'pa': 'Punjabi',
+    'or': 'Odia'
+};
 
-// Indian Languages
-export const INDIAN_LANGUAGES = [
-    { code: 'hi', name: 'Hindi (हिंदी)' },
-    { code: 'bn', name: 'Bengali (বাংলা)' },
-    { code: 'ta', name: 'Tamil (தமிழ்)' },
-    { code: 'te', name: 'Telugu (తెలుగు)' },
-    { code: 'mr', name: 'Marathi (मराठी)' },
-    { code: 'gu', name: 'Gujarati (ગુજરાતી)' },
-    { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
-    { code: 'ml', name: 'Malayalam (മലയാളം)' },
-    { code: 'pa', name: 'Punjabi (ਪੰਜਾਬੀ)' },
-    { code: 'ur', name: 'Urdu (اردو)' }
-];
-
-// Global Languages
-export const GLOBAL_LANGUAGES = [
-    { code: 'en', name: 'English' },
-    { code: 'es', name: 'Spanish (Español)' },
-    { code: 'fr', name: 'French (Français)' },
-    { code: 'de', name: 'German (Deutsch)' },
-    { code: 'ar', name: 'Arabic (العربية)' },
-    { code: 'zh', name: 'Chinese (中文)' }
-];
-
+// Supported Languages (Expanded to all major Indian languages)
 export const SUPPORTED_LANGUAGES = [
-    ...GLOBAL_LANGUAGES,
-    ...INDIAN_LANGUAGES
+    { code: 'en', name: 'English' },
+    { code: 'hi', name: 'Hindi (हिंदी)' },
+    { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
+    { code: 'te', name: 'Telugu (తెలుగు)' },
+    { code: 'ta', name: 'Tamil (தமிழ்)' },
+    { code: 'ml', name: 'Malayalam (മലയാളം)' },
+    { code: 'mr', name: 'Marathi (मराठी)' },
+    { code: 'bn', name: 'Bengali (বাংলা)' },
+    { code: 'gu', name: 'Gujarati (ગુજરાતી)' },
+    { code: 'pa', name: 'Punjabi (ਪੰਜਾਬੀ)' },
+    { code: 'or', name: 'Odia (ଓଡ଼ିଆ)' }
 ];
 
-const CACHE_KEY_PREFIX = 'ayurtribe_i18n_v1_';
-const API_URL = 'https://libretranslate.com/translate'; // Fallback public mirror
-// Alternative mirrors:
-// https://translate.terraprint.co/translate
-// https://lt.vern.cc/translate
+export const GLOBAL_LANGUAGES: any[] = [];
+
+
+// apps/web/src/services/translationService.ts
+
+
+
+const CACHE_KEY_PREFIX = 'ayurtribe_indic_v1_';
+
+// Configuration
+// Adapted for Create React App (process.env) instead of Vite (import.meta.env)
+// const API_URL = process.env.REACT_APP_TRANSLATION_API_URL || 'https://api.dhruva.ai4bharat.org/services/inference/translation';
+// const API_KEY = process.env.REACT_APP_TRANSLATION_API_KEY || '';
 
 interface TranslationCache {
     [key: string]: string;
@@ -42,6 +50,8 @@ interface TranslationCache {
 class TranslationService {
     private cache: TranslationCache = {};
     private pendingRequests: Map<string, Promise<string>> = new Map();
+    private batchBuffer: Map<string, Array<{ text: string, resolve: (val: string) => void, reject: (err: any) => void }>> = new Map();
+    private batchTimeout: NodeJS.Timeout | null = null;
 
     constructor() {
         this.loadCache();
@@ -67,108 +77,120 @@ class TranslationService {
     }
 
     private getCacheKey(text: string, targetLang: string): string {
-        return `${targetLang}|${text.trim()}`;
+        const safeText = String(text || '').trim();
+        return `${targetLang}|${safeText}`;
     }
 
-    async translateText(text: string, targetLang: string): Promise<string> {
+    async translateText(text: any, targetLang: string): Promise<string> {
+        if (typeof text !== 'string') {
+            console.warn('[TranslationService] Attempted to translate non-string value:', text);
+            return String(text || '');
+        }
         if (!text || !text.trim()) return text;
-        if (targetLang === 'en') return text; // Base language
+        if (targetLang === 'en') return text;
+
+        // Check if language is supported by IndicTrans2 mapping
+        if (!INDIC_LANG_MAPPING[targetLang] && !GLOBAL_LANGUAGES.find(l => l.code === targetLang)) {
+            console.warn(`Language ${targetLang} not supported by configuration.`);
+            return text;
+        }
 
         const cacheKey = this.getCacheKey(text, targetLang);
 
-        // 1. Check Memory/Local Storage Cache
-        if (this.cache[cacheKey]) {
-            return this.cache[cacheKey];
-        }
+        // 1. Check Cache
+        if (this.cache[cacheKey]) return this.cache[cacheKey];
 
-        // 2. Check Pending Requests (Deduplication)
-        if (this.pendingRequests.has(cacheKey)) {
-            return this.pendingRequests.get(cacheKey)!;
-        }
+        // 2. Check Pending
+        if (this.pendingRequests.has(cacheKey)) return this.pendingRequests.get(cacheKey)!;
 
-        // 3. API Call
-        const promise = this.performTranslation(text, targetLang)
-            .then(translated => {
+        // 3. Buffer for batching
+        const promise = new Promise<string>((resolve, reject) => {
+            if (!this.batchBuffer.has(targetLang)) {
+                this.batchBuffer.set(targetLang, []);
+            }
+            this.batchBuffer.get(targetLang)!.push({ text, resolve, reject });
+
+            if (!this.batchTimeout) {
+                this.batchTimeout = setTimeout(() => this.flushBatch(), 150);
+            }
+        }).then(translated => {
+            // IMPORTANT: Only cache if the translation actually changed things 
+            // or if it's very likely a correct translation (differs from original)
+            if (translated && translated !== text) {
                 this.cache[cacheKey] = translated;
                 this.saveCache();
-                this.pendingRequests.delete(cacheKey);
-                return translated;
-            })
-            .catch(err => {
-                console.error(`Translation failed for "${text}" to ${targetLang}`, err);
-                this.pendingRequests.delete(cacheKey);
-                return text; // Fallback to original
-            });
+            }
+            this.pendingRequests.delete(cacheKey);
+            return translated;
+        }).catch(err => {
+            console.error(`Translation failed for "${text}" to ${targetLang}`, err);
+            this.pendingRequests.delete(cacheKey);
+            return text;
+        });
 
         this.pendingRequests.set(cacheKey, promise);
         return promise;
     }
 
-    private async performTranslation(text: string, targetLang: string): Promise<string> {
-        try {
-            // Small random delay to avoid hitting rate limits instantly if multiple components mount
-            await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
+    private async flushBatch() {
+        // ... (existing code omitted for brevity in chunking, but I'll keep it)
+        this.batchTimeout = null;
+        const currentBatches = Array.from(this.batchBuffer.entries());
+        this.batchBuffer.clear();
 
-            const response = await axios.post(API_URL, {
-                q: text,
-                source: 'en',
-                target: targetLang,
-                format: 'text'
-            }, {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: 5000 // 5s timeout
-            });
+        for (const [targetLang, requests] of currentBatches) {
+            try {
+                const texts = requests.map(r => r.text);
+                await new Promise(resolve => setTimeout(resolve, 300));
 
-            return response.data.translatedText;
-        } catch (error) {
-            // If primary mirror fails, log it. Real app should try valid failover mirrors.
-            throw error;
+                const response: any = await api.post('/translation/batch-translate', {
+                    texts,
+                    targetLang,
+                    sourceLang: 'en'
+                });
+
+                if (response && Array.isArray(response.translations)) {
+                    response.translations.forEach((trans: string, idx: number) => {
+                        const indicTarget = INDIC_LANG_MAPPING[targetLang];
+                        let cleanedTrans = trans;
+                        if (indicTarget) {
+                            cleanedTrans = cleanedTrans.replace('eng_Latn', '').replace(indicTarget, '').trim();
+                        }
+                        requests[idx].resolve(cleanedTrans || texts[idx]);
+                    });
+                } else {
+                    console.warn('Unknown batch translation response format', response);
+                    requests.forEach(r => r.resolve(r.text));
+                }
+            } catch (error) {
+                console.error('Batch translation failed', error);
+                requests.forEach(r => r.resolve(r.text));
+            }
         }
     }
 
-    // Batch translation helper (LibreTranslate supports batch 'q' as array)
-    async translateBatch(texts: string[], targetLang: string): Promise<string[]> {
-        if (targetLang === 'en') return texts;
-
-        const uncachedIndices: number[] = [];
-        const uncachedTexts: string[] = [];
-        const results: string[] = new Array(texts.length).fill('');
-
-        // 1. Fill from cache
-        texts.forEach((text, index) => {
-            const key = this.getCacheKey(text, targetLang);
-            if (this.cache[key]) {
-                results[index] = this.cache[key];
-            } else {
-                uncachedIndices.push(index);
-                uncachedTexts.push(text);
-            }
-        });
-
-        if (uncachedTexts.length === 0) return results;
-
-        // 2. Fetch missing
+    /**
+     * Fetches the entire pre-calculated bundle for a language
+     */
+    async getBundle(lang: string): Promise<Record<string, string>> {
+        if (lang === 'en') return {};
         try {
-            // Note: Not all LibreTranslate mirrors enable batching by default.
-            // We'll stick to sequential parallel for better compatibility with strict mirrors
-            // or implement true batching if server supports it.
-            // For safety/compatibility, we map to single calls here:
-            const newTranslations = await Promise.all(
-                uncachedTexts.map(t => this.translateText(t, targetLang))
-            );
-
-            newTranslations.forEach((trans, i) => {
-                results[uncachedIndices[i]] = trans;
-            });
-
-            return results;
+            const response: any = await api.get(`/translation/bundle/${lang}`);
+            if (response && response.bundle) {
+                // Merge into local cache for performance
+                Object.entries(response.bundle as Record<string, string>).forEach(([text, trans]) => {
+                    const key = this.getCacheKey(text, lang);
+                    this.cache[key] = trans;
+                });
+                this.saveCache();
+                return response.bundle;
+            }
+            return {};
         } catch (error) {
-            console.error('Batch translation failed', error);
-            return texts; // Fallback
+            console.error(`Failed to fetch bundle for ${lang}`, error);
+            return {};
         }
     }
 }
 
 export const translationService = new TranslationService();
-
-// Translation service singleton for app-wide use

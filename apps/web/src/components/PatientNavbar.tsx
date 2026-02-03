@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { LanguageSelector } from './LanguageSelector';
 import { useLanguage } from '../context/LanguageContext';
+import DynamicText from './DynamicText';
 
 interface PatientNavbarProps {
     onProfileClick?: () => void;
@@ -43,12 +44,11 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
     };
 
     // Use t() function to translate labels dynamically
-    // Note: The mapping key is the English text which triggers the dictionary/API lookup
     const navLinks = [
-        { name: t('Dashboard'), view: 'dashboard', action: () => handleNavigate('dashboard') },
-        { name: t('Health Profile'), view: 'health', action: () => handleNavigate('health') },
-        { name: t('Visualization'), view: 'visualization', action: () => handleNavigate('visualization') },
-        { name: t('My Bookings'), view: 'appointments', action: () => handleNavigate('appointments') }
+        { name: t('nav.dashboard'), view: 'dashboard', action: () => handleNavigate('dashboard') },
+        { name: t('nav.profile'), view: 'health', action: () => handleNavigate('health') },
+        { name: t('nav.visualization'), view: 'visualization', action: () => handleNavigate('visualization') },
+        { name: t('nav.bookings'), view: 'appointments', action: () => handleNavigate('appointments') }
     ];
 
     return (
@@ -60,8 +60,8 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
                         <span className="text-[#81B29A] font-bold text-xl">A</span>
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-lg font-bold text-[#F4F1DE] leading-tight">Ayur Tribe</span>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">{t('Personalized Care')}</span>
+                        <span className="text-lg font-bold text-[#F4F1DE] leading-tight"><DynamicText>{t('app_name')}</DynamicText></span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider"><DynamicText>{t('landing.hero_tag')}</DynamicText></span>
                     </div>
                 </div>
 
@@ -76,7 +76,7 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
                                 : 'text-white/80 hover:text-white'
                                 }`}
                         >
-                            {link.name}
+                            <DynamicText>{link.name}</DynamicText>
                         </button>
                     ))}
                 </div>
@@ -89,7 +89,7 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder={t('Search records, tips...')}
+                            placeholder={t('nav.search_placeholder')}
                             className="bg-white/5 border border-white/10 rounded-lg py-1.5 pl-9 pr-4 text-sm text-gray-200 focus:outline-none focus:border-[#81B29A] focus:bg-white/10 w-48 transition-all"
                         />
                     </div>
@@ -108,7 +108,7 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
                         className="text-white/80 hover:text-white text-sm font-medium transition-colors"
                         onClick={handleLogout}
                     >
-                        {t('Logout')}
+                        <DynamicText>{t('nav.logout')}</DynamicText>
                     </button>
                 </div>
 
@@ -143,7 +143,7 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
                                         : 'text-white/80 hover:text-white'
                                         }`}
                                 >
-                                    {link.name}
+                                    <DynamicText>{link.name}</DynamicText>
                                 </button>
                             ))}
                             <hr className="border-white/10 my-2" />
@@ -154,7 +154,7 @@ const PatientNavbar: React.FC<PatientNavbarProps> = ({ onProfileClick }) => {
                                 className="px-3 py-2 rounded-md text-sm font-medium text-left text-white/80 hover:text-white"
                                 onClick={handleLogout}
                             >
-                                {t('Logout')}
+                                <DynamicText>{t('nav.logout')}</DynamicText>
                             </button>
                         </div>
                     </motion.div>

@@ -4,6 +4,8 @@ import NutritionDashboard from '../../components/NutritionDashboard';
 import PatientNavbar from '../../components/PatientNavbar';
 import api from '../../utils/api';
 
+import { GlobalFooter } from '../../components/GlobalFooter';
+
 const PatientNutrition: React.FC = () => {
     const navigate = useNavigate();
     const [prakritiScores, setPrakritiScores] = useState<any>(null);
@@ -60,11 +62,12 @@ const PatientNutrition: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#1a1c23]">
+        <div className="min-h-screen bg-[#1a1c23] flex flex-col">
             <PatientNavbar />
-            <div className="pt-24 px-4 sm:px-6 lg:px-8">
+            <div className="pt-24 px-4 sm:px-6 lg:px-8 flex-1">
                 <NutritionDashboard prakritiScores={prakritiScores} />
             </div>
+            <GlobalFooter dark className="border-t border-white/5 mt-12 bg-black/20" />
         </div>
     );
 };

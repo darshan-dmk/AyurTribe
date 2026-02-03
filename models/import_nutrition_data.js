@@ -7,8 +7,8 @@ const path = require('path');
 const csv = require('csv-parser');
 
 // Supabase configuration - replace with your actual credentials
-const SUPABASE_URL = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'YOUR_SERVICE_KEY';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://vsuoeqyazbymkwnjaeaf.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdW9lcXlhemJ5bWt3bmphZWFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTg1MjIwNSwiZXhwIjoyMDg1NDI4MjA1fQ.J6y0QvcIuway0M2SFASwH7rvDrSGAQUaLO4rnzU7SII';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('Missing Supabase credentials. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables.');
@@ -29,28 +29,28 @@ function parseArrayString(str) {
 // Convert array to PostgreSQL format
 function toPostgresArray(arr) {
   if (!Array.isArray(arr) || arr.length === 0) return '{}';
-  
+
   // Escape special characters and wrap each item in double quotes
   const escapedItems = arr.map(item => {
     // Escape backslashes and double quotes
     return `"${item.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   });
-  
+
   return `{${escapedItems.join(',')}}`;
 }
 
 async function importNutritionData() {
   const filePath = path.join(__dirname, 'nutrition_dataset.csv');
-  
+
   if (!fs.existsSync(filePath)) {
     console.error(`CSV file not found at ${filePath}`);
     process.exit(1);
   }
 
   const foodItems = [];
-  
+
   console.log('Starting to read CSV file...');
-  
+
   fs.createReadStream(filePath)
     .pipe(csv())
     .on('data', (row) => {
@@ -91,32 +91,32 @@ async function importNutritionData() {
         therapeutic_uses: therapeutic_uses,
         recommended_portion: row.recommended_portion
       };
-      
+
       foodItems.push(foodItem);
     })
     .on('end', async () => {
       console.log(`Finished reading CSV file. Processing ${foodItems.length} items...`);
-      
+
       // Process in batches to avoid overwhelming the database
       const batchSize = 100;
       for (let i = 0; i < foodItems.length; i += batchSize) {
         const batch = foodItems.slice(i, i + batchSize);
-        
+
         // Insert batch into Supabase
         const { data, error } = await supabase
           .from('food_items')
           .insert(batch);
-          
+
         if (error) {
-          console.error(`Error inserting batch ${Math.floor(i/batchSize) + 1}:`, error);
+          console.error(`Error inserting batch ${Math.floor(i / batchSize) + 1}:`, error);
         } else {
-          console.log(`Successfully inserted batch ${Math.floor(i/batchSize) + 1} (${batch.length} items)`);
+          console.log(`Successfully inserted batch ${Math.floor(i / batchSize) + 1} (${batch.length} items)`);
         }
-        
+
         // Add a small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      
+
       console.log('Finished importing nutrition data!');
       process.exit(0);
     })

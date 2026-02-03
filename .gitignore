@@ -27,8 +27,8 @@ out/
 
 # === Env files ===
 .env
-.env.local
-.env.*.local
+.env.*
+.env*.local
 
 # === Misc ===
 .DS_Store

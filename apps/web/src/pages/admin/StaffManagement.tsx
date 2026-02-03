@@ -21,6 +21,24 @@ const StaffManagement = () => {
 
     React.useEffect(() => {
         fetchStaff();
+
+        // Realtime subscription for staff duty status
+        const staffChannel = supabase
+            .channel('admin-staff-status')
+            .on('postgres_changes' as any, {
+                event: 'UPDATE',
+                table: 'users'
+            }, (payload: any) => {
+                // If the updated user is in our list, update them
+                setStaffList(prev => prev.map(staff =>
+                    staff.id === payload.new.id ? { ...staff, ...payload.new } : staff
+                ));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(staffChannel);
+        };
     }, []);
 
     const fetchStaff = async () => {

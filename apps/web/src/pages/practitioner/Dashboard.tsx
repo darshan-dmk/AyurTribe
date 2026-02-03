@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import ChatWidget from '../../components/ChatWidget';
 import NutritionDashboard from '../../components/NutritionDashboard';
+import DutyGuard from '../../components/DutyGuard';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 interface Thread {
   id: string;
@@ -26,6 +28,8 @@ interface Appointment {
   type: string;
   status: string;
 }
+
+
 
 const PractitionerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -155,6 +159,59 @@ const PractitionerDashboard: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    loadDashboardData();
+
+    // Set up real-time subscriptions only if we have a user
+    let appointmentChannel: any;
+    let chatChannel: any;
+    let userChannel: any;
+
+    const setupSubscriptions = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      (appointmentChannel as any) = supabase
+        .channel(`practitioner-apt-${user.id}`)
+        .on('postgres_changes' as any, {
+          event: '*',
+          table: 'appointments',
+          filter: `practitioner_id=eq.${user.id}`
+        }, () => loadDashboardData())
+        .subscribe();
+
+      (chatChannel as any) = supabase
+        .channel(`practitioner-chat-${user.id}`)
+        .on('postgres_changes' as any, {
+          event: '*',
+          table: 'chat_messages'
+        }, () => loadDashboardData())
+        .subscribe();
+
+      // Realtime User (Duty Status) Subscription
+      (userChannel as any) = supabase
+        .channel(`practitioner-user-${user.id}`)
+        .on('postgres_changes' as any, {
+          event: 'UPDATE',
+          table: 'users',
+          filter: `id=eq.${user.id}`
+        }, (payload: any) => {
+          if (payload.new) {
+            setPractitioner((prev: any) => ({ ...prev, ...payload.new }));
+          }
+        })
+        .subscribe();
+    };
+
+    setupSubscriptions();
+
+    return () => {
+      if (appointmentChannel) supabase.removeChannel(appointmentChannel);
+      if (chatChannel) supabase.removeChannel(chatChannel);
+      if (userChannel) supabase.removeChannel(userChannel);
+    };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('authToken');
@@ -194,285 +251,305 @@ const PractitionerDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <span className="text-2xl mr-3">👨‍⚕️</span>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-800">
-                    Dr. {practitioner?.first_name} {practitioner?.last_name}
-                  </h1>
-                  <p className="text-xs text-gray-500">Practitioner Dashboard</p>
+    <DutyGuard onDutyChange={(status) => setPractitioner((prev: any) => ({ ...prev, is_on_duty: status }))}>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <span className="text-2xl mr-3">👨‍⚕️</span>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-800">
+                      Dr. {practitioner?.first_name} {practitioner?.last_name}
+                    </h1>
+                    <p className="text-xs text-gray-500">Practitioner Dashboard</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate('/practitioner/patients')}
+                  className="px-4 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
+                >
+                  View All Patients
+                </button>
+                <button
+                  onClick={handleToggleDuty}
+                  className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 ${practitioner?.is_on_duty
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                  {practitioner?.is_on_duty ? '🟢 On Duty' : '⚪ Off Duty'}
+                </button>
+                <button
+                  onClick={() => navigate('/practitioner/schedule')}
+                  className="px-4 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100"
+                >
+                  Manage Schedule
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Navigation Tabs */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="flex space-x-8">
               <button
-                onClick={() => navigate('/practitioner/patients')}
-                className="px-4 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
-              >
-                View All Patients
-              </button>
-              <button
-                onClick={handleToggleDuty}
-                className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 ${practitioner?.is_on_duty
-                  ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                onClick={() => setActiveView('dashboard')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'dashboard'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
-                {practitioner?.is_on_duty ? '🟢 On Duty' : '⚪ Off Duty'}
+                Dashboard
               </button>
               <button
-                onClick={() => navigate('/practitioner/schedule')}
-                className="px-4 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100"
+                onClick={() => setActiveView('nutrition')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'nutrition'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
-                Manage Schedule
+                Nutrition Management
               </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
-              >
-                Logout
-              </button>
-            </div>
+            </nav>
           </div>
         </div>
-      </header>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveView('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'dashboard'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveView('nutrition')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'nutrition'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-            >
-              Nutrition Management
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Dashboard View */}
-        {activeView === 'dashboard' && (
-          <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">Total Patients</span>
-                  <span className="text-2xl">👥</span>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Dashboard View */}
+          {activeView === 'dashboard' && (
+            <>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Total Patients</span>
+                    <span className="text-2xl">👥</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{stats.totalPatients}</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">{stats.totalPatients}</p>
-              </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">Today's Appointments</span>
-                  <span className="text-2xl">📅</span>
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Today's Appointments</span>
+                    <span className="text-2xl">📅</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{stats.todayAppointments}</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">{stats.todayAppointments}</p>
-              </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">Unread Messages</span>
-                  <span className="text-2xl">💬</span>
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Unread Messages</span>
+                    <span className="text-2xl">💬</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">
+                    {stats.unreadMessages}
+                    {stats.unreadMessages > 0 && (
+                      <span className="ml-2 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse"></span>
+                    )}
+                  </p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">
-                  {stats.unreadMessages}
-                  {stats.unreadMessages > 0 && (
-                    <span className="ml-2 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse"></span>
-                  )}
-                </p>
-              </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">Pending Reviews</span>
-                  <span className="text-2xl">📋</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-800">{stats.pendingReviews}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Today's Appointments */}
-              <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Today's Schedule</h2>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {appointments.length > 0 ? (
-                    appointments.map((apt) => (
-                      <div key={apt.id} className="p-3 bg-gray-50 rounded-lg">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-medium text-gray-800">{apt.patient_name}</span>
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                            {apt.appointment_time}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">{apt.type}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500 py-8">No appointments today</p>
-                  )}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Pending Reviews</span>
+                    <span className="text-2xl">📋</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{stats.pendingReviews}</p>
                 </div>
               </div>
 
-              {/* Active Patient Conversations */}
-              <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Active Conversations</h2>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {activeThreads.length > 0 ? (
-                    activeThreads.map((thread) => (
-                      <button
-                        key={thread.id}
-                        onClick={() => setSelectedThreadId(thread.id)}
-                        className="w-full p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-left transition-colors"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-800">
-                              {thread.patient?.first_name} {thread.patient?.last_name}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {thread.title || 'Health Consultation'}
-                            </p>
-                          </div>
-                          {thread.unread_count && thread.unread_count > 0 && (
-                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
-                              {thread.unread_count}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Today's Appointments */}
+                <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Today's Schedule</h2>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {appointments.length > 0 ? (
+                      appointments.map((apt) => (
+                        <div key={apt.id} className="p-3 bg-gray-50 rounded-lg">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium text-gray-800">{apt.patient_name}</span>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                              {apt.appointment_time}
                             </span>
-                          )}
+                          </div>
+                          <p className="text-sm text-gray-600">{apt.type}</p>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Last activity: {new Date(thread.updated_at).toLocaleString()}
-                        </p>
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500 py-8">No active conversations</p>
-                  )}
+                      ))
+                    ) : (
+                      <p className="text-center text-gray-500 py-8">No appointments today</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Active Patient Conversations */}
+                <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Active Conversations</h2>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {activeThreads.length > 0 ? (
+                      activeThreads.map((thread) => (
+                        <button
+                          key={thread.id}
+                          onClick={() => setSelectedThreadId(thread.id)}
+                          className="w-full p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-left transition-colors"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-800">
+                                {thread.patient?.first_name} {thread.patient?.last_name}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {thread.title || 'Health Consultation'}
+                              </p>
+                            </div>
+                            {thread.unread_count && thread.unread_count > 0 && (
+                              <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                                {thread.unread_count}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Last activity: {new Date(thread.updated_at).toLocaleString()}
+                          </p>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-center text-gray-500 py-8">No active conversations</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => navigate('/practitioner/prescriptions/new')}
+                      className="w-full p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium transition-colors"
+                    >
+                      📝 Create Prescription
+                    </button>
+                    <button
+                      onClick={() => navigate('/practitioner/questionnaires/review')}
+                      className="w-full p-3 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg font-medium transition-colors"
+                    >
+                      📋 Review Questionnaires
+                    </button>
+                    <button
+                      onClick={() => navigate('/practitioner/nutrition')}
+                      className="w-full p-3 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg font-medium transition-colors"
+                    >
+                      🍽️ Nutrition Management
+                    </button>
+                    <button
+                      onClick={() => navigate('/practitioner/reports')}
+                      className="w-full p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium transition-colors"
+                    >
+                      📊 Generate Reports
+                    </button>
+                    <button
+                      onClick={() => navigate('/practitioner/availability')}
+                      className="w-full p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium transition-colors"
+                    >
+                      🗓️ Set Availability
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => navigate('/practitioner/prescriptions/new')}
-                    className="w-full p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium transition-colors"
-                  >
-                    📝 Create Prescription
-                  </button>
-                  <button
-                    onClick={() => navigate('/practitioner/questionnaires/review')}
-                    className="w-full p-3 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg font-medium transition-colors"
-                  >
-                    📋 Review Questionnaires
-                  </button>
-                  <button
-                    onClick={() => navigate('/practitioner/nutrition')}
-                    className="w-full p-3 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg font-medium transition-colors"
-                  >
-                    🍽️ Nutrition Management
-                  </button>
-                  <button
-                    onClick={() => navigate('/practitioner/reports')}
-                    className="w-full p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-medium transition-colors"
-                  >
-                    📊 Generate Reports
-                  </button>
-                  <button
-                    onClick={() => navigate('/practitioner/availability')}
-                    className="w-full p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium transition-colors"
-                  >
-                    🗓️ Set Availability
-                  </button>
+              {/* Patient Health Alerts */}
+              <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-800 mb-4">Patient Health Alerts</h2>
+                <div className="text-center text-gray-500 py-8">
+                  <span className="text-4xl mb-4 block">🔔</span>
+                  <p>No critical health alerts at this time</p>
                 </div>
               </div>
-            </div>
+            </>
+          )}
 
-            {/* Patient Health Alerts */}
-            <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Patient Health Alerts</h2>
-              <div className="text-center text-gray-500 py-8">
-                <span className="text-4xl mb-4 block">🔔</span>
-                <p>No critical health alerts at this time</p>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Nutrition View */}
-        {activeView === 'nutrition' && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Nutrition Management</h2>
-              <p className="text-gray-600 mt-2">
-                View and manage personalized nutrition plans for your patients
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Patient
-              </label>
-              <select
-                value={selectedPatientId || ''}
-                onChange={(e) => setSelectedPatientId(e.target.value || null)}
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              >
-                <option value="">Select a patient to view nutrition data</option>
-                {activeThreads.map((thread) => (
-                  <option key={thread.id} value={thread.patient_id}>
-                    {thread.patient?.first_name} {thread.patient?.last_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedPatientId ? (
-              <NutritionDashboard />
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">🍽️</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No Patient Selected</h3>
-                <p className="text-gray-500">
-                  Select a patient from the dropdown to view their personalized nutrition dashboard
+          {/* Nutrition View */}
+          {activeView === 'nutrition' && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Nutrition Management</h2>
+                <p className="text-gray-600 mt-2">
+                  View and manage personalized nutrition plans for your patients
                 </p>
               </div>
-            )}
-          </div>
-        )}
-      </main>
 
-      {/* Chat Widget - For practitioner view */}
-      <ChatWidget
-        initialThreadId={selectedThreadId}
-        isPractitionerView={true}
-      />
-    </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Patient
+                </label>
+                <select
+                  value={selectedPatientId || ''}
+                  onChange={(e) => setSelectedPatientId(e.target.value || null)}
+                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                >
+                  <option value="">Select a patient to view nutrition data</option>
+                  {activeThreads.map((thread) => (
+                    <option key={thread.id} value={thread.patient_id}>
+                      {thread.patient?.first_name} {thread.patient?.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedPatientId ? (
+                <NutritionDashboard />
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">🍽️</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No Patient Selected</h3>
+                  <p className="text-gray-500">
+                    Select a patient from the dropdown to view their personalized nutrition dashboard
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+
+        <ChatWidget
+          initialThreadId={selectedThreadId}
+          isPractitionerView={true}
+        />
+        <GlobalFooter className="border-t border-gray-200/50 bg-white" />
+      </div>
+    </DutyGuard>
   );
 };
 
 export default PractitionerDashboard;
+const StatCard: React.FC<{ title: string; value: number | string; icon: string; color: string }> = ({ title, value, icon, color }) => {
+  const colorMap: any = {
+    blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    green: 'bg-green-50 text-green-600 border-green-100',
+    amber: 'bg-amber-50 text-amber-600 border-amber-100',
+    purple: 'bg-purple-50 text-purple-600 border-purple-100'
+  };
+
+  return (
+    <div className={`p-6 rounded-xl border ${colorMap[color]} shadow-sm transition-hover hover:shadow-md`}>
+      <div className="flex items-center justify-between mb-2 text-left">
+        <span className="text-2xl">{icon}</span>
+        <span className="text-2xl font-bold">{value}</span>
+      </div>
+      <p className="text-sm font-medium opacity-80 text-left">{title}</p>
+    </div>
+  );
+};

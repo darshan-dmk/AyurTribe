@@ -6,26 +6,27 @@ import { ChevronRight, Search, Filter, Leaf, AlertCircle, BarChart3, X, Trending
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush, ReferenceLine } from 'recharts';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import DynamicText from './DynamicText';
 
 // --- Types ---
 interface FoodItem {
   id: string;
   name_en: string;
-  name_sanskrit: string;
+  name_sanskrit?: string;
   food_group: string;
   calories_per_100g: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-  fiber_g: number;
-  vitamins: string[];
-  minerals: string[];
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
+  fiber_g?: number;
+  vitamins?: string[];
+  minerals?: string[];
   rasa: string[];
-  virya: string;
-  vipaka: string;
+  virya?: string;
+  vipaka?: string;
   dosha_effect: string[];
-  therapeutic_uses: string[];
-  recommended_portion: string;
+  therapeutic_uses?: string[];
+  recommended_portion?: string;
 }
 
 interface DietRecommendation {
@@ -140,11 +141,11 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
         setError('');
 
 
-        // Fetch food items
+        // Fetch food items - select all available columns
         const { data: foods, error: foodError } = await supabase
           .from('food_items')
-          .select('*')
-          .limit(200); // Load 200 items initially for better browsing
+          .select('id, name_en, name_sanskrit, food_group, calories_per_100g, protein_g, carbs_g, fat_g, fiber_g, vitamins, minerals, rasa, virya, vipaka, dosha_effect')
+          .limit(200);
 
         if (foodError) throw foodError;
         setFoodItems(foods || []);
@@ -178,76 +179,37 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
 
   const getVitaminDescription = (vitamin: string) => {
-    const descriptions: Record<string, string> = {
-      'A': 'Essential for vision, immune system, and skin health',
-      'B1': 'Helps convert food into energy and supports nerve function',
-      'B2': 'Important for energy production and cellular function',
-      'B3': 'Supports digestive system, skin, and nervous system',
-      'B6': 'Important for brain development and function',
-      'B12': 'Essential for nerve tissue health and red blood cell formation',
-      'C': 'Antioxidant that supports immune system and skin health',
-      'D': 'Helps the body absorb calcium and supports bone health',
-      'E': 'Antioxidant that helps protect cells from damage',
-      'K': 'Essential for blood clotting and bone health',
-      'Biotin': 'Supports healthy hair, skin, and nails',
-      'Folate': 'Important for DNA synthesis and cell division'
-    };
-    return descriptions[vitamin] || 'Essential nutrient for overall health';
+    return t(`nutrition.vitamin_desc.${vitamin}`, { defaultValue: t('nutrition.vitamin_desc.default') });
   };
 
   const getMineralDescription = (mineral: string) => {
-    const descriptions: Record<string, string> = {
-      'Calcium': 'Essential for bone health and muscle function',
-      'Iron': 'Important for oxygen transport in the blood',
-      'Magnesium': 'Supports muscle and nerve function, blood sugar control',
-      'Potassium': 'Helps regulate fluid balance and blood pressure',
-      'Zinc': 'Supports immune system and wound healing',
-      'Selenium': 'Antioxidant that protects cells from damage',
-      'Copper': 'Helps with iron metabolism and nervous system function',
-      'Manganese': 'Supports bone formation and wound healing',
-      'Phosphorus': 'Essential for bone health and energy production',
-      'Sodium': 'Helps maintain fluid balance and nerve function',
-      'Iodine': 'Essential for thyroid function'
-    };
-    return descriptions[mineral] || 'Essential mineral for bodily functions';
+    return t(`nutrition.mineral_desc.${mineral}`, { defaultValue: t('nutrition.mineral_desc.default') });
   };
 
   const getVitaminBenefits = (vitamin: string) => {
-    const benefits: Record<string, string[]> = {
-      'A': ['Supports Vata eye health', 'Balances Pitta skin conditions', 'Strengthens Kapha immune system'],
-      'B1': ['Supports Vata nervous system', 'Balances Pitta energy metabolism', 'Reduces Kapha lethargy'],
-      'C': ['Supports Vata immune system', 'Balances Pitta antioxidant needs', 'Reduces Kapha inflammation'],
-      'D': ['Supports Vata bone health', 'Balances Pitta calcium absorption', 'Reduces Kapha bone density issues'],
-      'E': ['Supports Vata cellular protection', 'Balances Pitta skin healing', 'Reduces Kapha oxidative stress'],
-    };
-    return benefits[vitamin] || ['General health benefits'];
+    const data = t(`nutrition.vitamin_benefits.${vitamin}`, { returnObjects: true, defaultValue: t('nutrition.vitamin_benefits.default', { returnObjects: true }) });
+    return Array.isArray(data) ? data : [data as string];
   };
 
   const getMineralBenefits = (mineral: string) => {
-    const benefits: Record<string, string[]> = {
-      'Calcium': ['Supports Vata bone health', 'Balances Pitta bone metabolism', 'Reduces Kapha calcification'],
-      'Iron': ['Supports Vata blood health', 'Balances Pitta oxygenation', 'Reduces Kapha anemia'],
-      'Magnesium': ['Supports Vata muscle relaxation', 'Balances Pitta nervous system', 'Reduces Kapha water retention'],
-      'Potassium': ['Supports Vata nerve function', 'Balances Pitta blood pressure', 'Reduces Kapha fluid retention'],
-      'Zinc': ['Supports Vata immune function', 'Balances Pitta skin healing', 'Reduces Kapha immune sluggishness'],
-    };
-    return benefits[mineral] || ['General health benefits'];
+    const data = t(`nutrition.mineral_benefits.${mineral}`, { returnObjects: true, defaultValue: t('nutrition.mineral_benefits.default', { returnObjects: true }) });
+    return Array.isArray(data) ? data : [data as string];
   };
 
   const calculateAverageNutrition = () => {
     if (foodItems.length === 0) return [];
     const total = foodItems.reduce((acc, food) => ({
-      calories: acc.calories + food.calories_per_100g,
-      protein: acc.protein + food.protein_g,
-      carbs: acc.carbs + food.carbs_g,
-      fat: acc.fat + food.fat_g
+      calories: acc.calories + (food.calories_per_100g || 0),
+      protein: acc.protein + (food.protein_g || 0),
+      carbs: acc.carbs + (food.carbs_g || 0),
+      fat: acc.fat + (food.fat_g || 0)
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
     const count = foodItems.length;
     return [
-      { name: 'Protein', value: Math.round((total.protein / count) * 10) / 10, color: '#E07A5F' }, // Terracotta
-      { name: 'Carbs', value: Math.round((total.carbs / count) * 10) / 10, color: '#81B29A' }, // Sage
-      { name: 'Fat', value: Math.round((total.fat / count) * 10) / 10, color: '#F2CC8F' } // Gold
+      { name: t('nutrition.protein'), value: Math.round((total.protein / count) * 10) / 10, color: '#E07A5F' }, // Terracotta
+      { name: t('nutrition.carbs'), value: Math.round((total.carbs / count) * 10) / 10, color: '#81B29A' }, // Sage
+      { name: t('nutrition.fat'), value: Math.round((total.fat / count) * 10) / 10, color: '#F2CC8F' } // Gold
     ];
   };
 
@@ -257,9 +219,9 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
     const kaphaCount = foodItems.filter(f => f.dosha_effect.some(e => e.includes('Kapha'))).length;
 
     return [
-      { name: 'Vata', value: vataCount, color: '#818cf8' }, // Indigo
-      { name: 'Pitta', value: pittaCount, color: '#fb923c' }, // Orange
-      { name: 'Kapha', value: kaphaCount, color: '#34d399' } // Emerald
+      { name: t('prakriti.vata'), value: vataCount, color: '#818cf8' }, // Indigo
+      { name: t('prakriti.pitta'), value: pittaCount, color: '#fb923c' }, // Orange
+      { name: t('prakriti.kapha'), value: kaphaCount, color: '#34d399' } // Emerald
     ];
   };
 
@@ -281,9 +243,9 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
   const getCalorieComparison = () => {
     return foodItems.map(food => ({
       name: food.name_en.substring(0, 10),
-      calories: food.calories_per_100g,
-      protein: food.protein_g,
-      carbs: food.carbs_g
+      calories: food.calories_per_100g || 0,
+      protein: food.protein_g || 0,
+      carbs: food.carbs_g || 0
     }));
   };
 
@@ -292,12 +254,16 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
     const mineralCounts: Record<string, number> = {};
 
     foodItems.forEach(food => {
-      food.vitamins.forEach(vitamin => {
-        if (vitamin) vitaminCounts[vitamin] = (vitaminCounts[vitamin] || 0) + 1;
-      });
-      food.minerals.forEach(mineral => {
-        if (mineral) mineralCounts[mineral] = (mineralCounts[mineral] || 0) + 1;
-      });
+      if (food.vitamins) {
+        food.vitamins.forEach(vitamin => {
+          if (vitamin) vitaminCounts[vitamin] = (vitaminCounts[vitamin] || 0) + 1;
+        });
+      }
+      if (food.minerals) {
+        food.minerals.forEach(mineral => {
+          if (mineral) mineralCounts[mineral] = (mineralCounts[mineral] || 0) + 1;
+        });
+      }
     });
 
     const topVitamins = Object.entries(vitaminCounts)
@@ -323,12 +289,16 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
       const mineralCounts: Record<string, number> = {};
 
       foods.forEach(food => {
-        food.vitamins.forEach(vitamin => {
-          if (vitamin) vitaminCounts[vitamin] = (vitaminCounts[vitamin] || 0) + 1;
-        });
-        food.minerals.forEach(mineral => {
-          if (mineral) mineralCounts[mineral] = (mineralCounts[mineral] || 0) + 1;
-        });
+        if (food.vitamins) {
+          food.vitamins.forEach(vitamin => {
+            if (vitamin) vitaminCounts[vitamin] = (vitaminCounts[vitamin] || 0) + 1;
+          });
+        }
+        if (food.minerals) {
+          food.minerals.forEach(mineral => {
+            if (mineral) mineralCounts[mineral] = (mineralCounts[mineral] || 0) + 1;
+          });
+        }
       });
 
       const topVitamins = Object.entries(vitaminCounts)
@@ -360,13 +330,13 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
       const { data: allFoods, error: allError } = await supabase
         .from('food_items')
-        .select('*')
+        .select('id, name_en, name_sanskrit, food_group, calories_per_100g, protein_g, carbs_g, fat_g, fiber_g, vitamins, minerals, rasa, virya, vipaka, dosha_effect')
         .limit(2000); // Increased limit to ensure ample results
 
       if (allError) throw allError;
 
       if (!allFoods || allFoods.length === 0) {
-        setError('No food items found in database. Please check your data.');
+        setError(t('nutrition.no_foods_found_filter'));
         setFoodItems([]);
         setSearched(true);
         return;
@@ -386,7 +356,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
       });
 
       if (filtered.length === 0) {
-        setError(`No foods found for ${dosha}.Try different filters.`);
+        setError(`${t('nutrition.no_foods_found')} ${dosha}. ${t('settings.try_different_filters')}`);
       }
 
       setFoodItems(filtered);
@@ -394,7 +364,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
     } catch (error) {
       console.error('Error searching by dosha:', error);
-      setError(`Search error: ${error instanceof Error ? error.message : 'Unknown error'} `);
+      setError(`${t('nutrition.search_error')}: ${error instanceof Error ? error.message : 'Unknown error'} `);
       setFoodItems([]);
       setSearched(true);
     } finally {
@@ -407,12 +377,16 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
     const allMinerals = new Set<string>();
 
     foodItems.forEach(food => {
-      food.vitamins.forEach(vitamin => {
-        if (vitamin) allVitamins.add(vitamin);
-      });
-      food.minerals.forEach(mineral => {
-        if (mineral) allMinerals.add(mineral);
-      });
+      if (food.vitamins) {
+        food.vitamins.forEach(vitamin => {
+          if (vitamin) allVitamins.add(vitamin);
+        });
+      }
+      if (food.minerals) {
+        food.minerals.forEach(mineral => {
+          if (mineral) allMinerals.add(mineral);
+        });
+      }
     });
 
     return {
@@ -425,8 +399,8 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
     if (!selectedVitamin && !selectedMineral) return foods;
 
     return foods.filter(food => {
-      const hasVitamin = selectedVitamin ? food.vitamins.includes(selectedVitamin) : true;
-      const hasMineral = selectedMineral ? food.minerals.includes(selectedMineral) : true;
+      const hasVitamin = selectedVitamin ? (food.vitamins && food.vitamins.includes(selectedVitamin)) : true;
+      const hasMineral = selectedMineral ? (food.minerals && food.minerals.includes(selectedMineral)) : true;
       return hasVitamin && hasMineral;
     });
   };
@@ -474,7 +448,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
       setLoading(true);
       setError('');
 
-      let query = supabase.from('food_items').select('*');
+      let query = supabase.from('food_items').select('id, name_en, name_sanskrit, food_group, calories_per_100g, protein_g, carbs_g, fat_g, fiber_g, vitamins, minerals, rasa, virya, vipaka, dosha_effect');
 
       if (searchTerm) {
         query = query.or(`name_en.ilike.%${searchTerm}%,name_sanskrit.ilike.%${searchTerm}%`);
@@ -489,18 +463,23 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
       if (error) throw error;
 
-      let filtered = data || [];
+      let filtered: FoodItem[] = (data as any) || [];
       if (doshaToUse && filtered.length > 0) {
         filtered = filtered.filter((food: any) => {
           const effects = Array.isArray(food.dosha_effect)
             ? food.dosha_effect
-            : typeof food.dosha_effect === 'string'
+            : (typeof food.dosha_effect === 'string' && food.dosha_effect.startsWith('['))
               ? JSON.parse(food.dosha_effect)
-              : [];
+              : typeof food.dosha_effect === 'string'
+                ? food.dosha_effect.split(',').map((s: string) => s.trim())
+                : [];
 
           return effects.some((effect: string) =>
-            effect.toLowerCase().includes(`reduces ${doshaToUse.toLowerCase()}`) ||
-            effect.toLowerCase().includes(`balances ${doshaToUse.toLowerCase()}`)
+            effect && typeof effect === 'string' && (
+              effect.toLowerCase().includes(`reduces ${doshaToUse.toLowerCase()}`) ||
+              effect.toLowerCase().includes(`balances ${doshaToUse.toLowerCase()}`) ||
+              effect.toLowerCase().includes(doshaToUse.toLowerCase())
+            )
           );
         });
       }
@@ -510,7 +489,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
       if (filtered.length === 0) {
         if (searchTerm || selectedFoodGroup || doshaToUse || selectedVitamin || selectedMineral) {
-          setError(`No foods found matching your filters. Try adjusting them.`);
+          setError(t('nutrition.no_foods_found_filter'));
         }
       }
 
@@ -580,9 +559,10 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
     ));
   };
 
-  const getVirtyaDisplay = (virya: string) => {
+  const getViryaDisplay = (virya?: string) => {
+    if (!virya) return null;
     const icon = virya === 'Ushna' ? '🔥' : '❄️';
-    const className = `virya - badge virya - ${virya.toLowerCase()} `;
+    const className = `virya-badge virya-${virya.toLowerCase()}`;
     return <span className={className}>{icon} {virya}</span>;
   };
 
@@ -597,13 +577,13 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
         <div className="personalized-info">
 
           <p>
-            {t('Based on your')} <strong>{predictedDosha}</strong> {t('constitution')}
-            {confidence > 0 && ` (${t('ML Confidence')}: ${(confidence * 100).toFixed(0)}%)`}
+            {t('nutrition.based_on')} <strong>{predictedDosha}</strong> {t('prakriti.constitution')}
+            {confidence > 0 && ` (${t('nutrition.ai_confidence')}: ${(confidence * 100).toFixed(0)}%)`}
           </p>
         </div>
         <div className="dosha-indicator">
           <span className={`dosha - badge ${predictedDosha.toLowerCase()} `}>
-            {predictedDosha} {t('Dominant')}
+            {predictedDosha} {t('prakriti.dominant')}
           </span>
         </div>
       </div>
@@ -621,7 +601,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
       <div className="nutrition-page">
         <div className="loader-container">
           <div className="spinner"></div>
-          <p className="loader-text">{t('Loading your nutrition dashboard...')}</p>
+          <p className="loader-text">{t('nutrition.loading')}</p>
         </div>
       </div>
     );
@@ -642,12 +622,12 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
         >
           <div className="flex items-center gap-3 mb-2">
             <Sparkles className="text-[var(--accent-gold)]" size={24} />
-            <h1 className="header-title">{t('Ayurvedic Nutrition Engine')}</h1>
+            <h1 className="header-title"><DynamicText>{t('nutrition.engine')}</DynamicText></h1>
           </div>
           <p className="header-subtitle text-lg opacity-80 max-w-2xl">
-            {t('Al-powered food intelligence, personalized for your')}
+            <DynamicText>{t('nutrition.subtitle_prefix')}</DynamicText>
             <span className="text-[var(--accent-terracotta)] font-bold ml-1">
-              {prakritiScores?.dominant ? `${prakritiScores.dominant.charAt(0).toUpperCase() + prakritiScores.dominant.slice(1)} ` : 'Unique'} {t('Constitution')}
+              <DynamicText>{prakritiScores?.dominant ? `${prakritiScores.dominant.charAt(0).toUpperCase() + prakritiScores.dominant.slice(1)} ` : t('common.unique')}</DynamicText> <DynamicText>{t('prakriti.constitution')}</DynamicText>
             </span>
           </p>
         </motion.div>
@@ -676,7 +656,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
           >
             <AlertCircle size={20} className="text-red-400 shrink-0" />
             <div>
-              <p className="font-medium text-red-400">Search Issue</p>
+              <p className="font-medium text-red-400">{t('error.search_issue')}</p>
               <p className="text-sm opacity-90">{error}</p>
             </div>
           </motion.div>
@@ -687,9 +667,9 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
             <div className="section-header mb-6">
               <h2 className="section-title text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                 <Leaf size={24} className="text-[var(--accent-sage)]" />
-                <span>Personalized Diet Plan</span>
+                <span><DynamicText>{t('nutrition.diet_plan')}</DynamicText></span>
               </h2>
-              <span className="section-badge">{dietRecommendations.length} Plans Available</span>
+              <span className="section-badge"><DynamicText>{`${dietRecommendations.length} ${t('nutrition.plans_available')}`}</DynamicText></span>
             </div>
 
             <motion.div
@@ -706,7 +686,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                 >
                   <div className="rec-header">
                     <div className="rec-title-group">
-                      <h3 className="rec-title capitalize">{rec.prakriti_type} Diet</h3>
+                      <h3 className="rec-title capitalize"><DynamicText>{`${rec.prakriti_type} ${t('nutrition.diet_suffix')}`}</DynamicText></h3>
                       <span className="rec-type-badge">{rec.recommendation_type}</span>
                     </div>
                     <ChevronRight
@@ -727,11 +707,11 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                         {rec.recommendations?.length > 0 && (
                           <div className="rec-section mt-4">
                             <h4 className="rec-section-title flex items-center gap-2">
-                              <span>📋 Guidelines</span>
+                              <span>📋 <DynamicText>{t('nutrition.guidelines')}</DynamicText></span>
                             </h4>
                             <ul className="rec-list">
                               {rec.recommendations.map((guideline: string, idx: number) => (
-                                <li key={idx} className="text-sm">{guideline}</li>
+                                <li key={idx} className="text-sm"><DynamicText>{guideline}</DynamicText></li>
                               ))}
                             </ul>
                           </div>
@@ -739,10 +719,10 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
                         {rec.foods_to_favor?.length > 0 && (
                           <div className="rec-section">
-                            <h4 className="rec-section-title">✅ Foods to Favor</h4>
+                            <h4 className="rec-section-title">✅ <DynamicText>{t('nutrition.foods_favor')}</DynamicText></h4>
                             <div className="food-tags favor">
                               {rec.foods_to_favor.map((food: string, idx: number) => (
-                                <span key={idx} className="food-tag">{food}</span>
+                                <span key={idx} className="food-tag"><DynamicText>{food}</DynamicText></span>
                               ))}
                             </div>
                           </div>
@@ -750,10 +730,10 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
                         {rec.foods_to_avoid?.length > 0 && (
                           <div className="rec-section">
-                            <h4 className="rec-section-title">❌ Foods to Avoid</h4>
+                            <h4 className="rec-section-title">❌ <DynamicText>{t('nutrition.foods_avoid')}</DynamicText></h4>
                             <div className="food-tags avoid">
                               {rec.foods_to_avoid.map((food: string, idx: number) => (
-                                <span key={idx} className="food-tag avoid-tag">{food}</span>
+                                <span key={idx} className="food-tag avoid-tag"><DynamicText>{food}</DynamicText></span>
                               ))}
                             </div>
                           </div>
@@ -761,12 +741,12 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
                         {rec.meal_timing && (
                           <div className="rec-section">
-                            <h4 className="rec-section-title">⏰ Meal Timing</h4>
-                            <p className="meal-timing">{rec.meal_timing}</p>
+                            <h4 className="rec-section-title">⏰ <DynamicText>{t('nutrition.meal_timing')}</DynamicText></h4>
+                            <p className="meal-timing"><DynamicText>{rec.meal_timing}</DynamicText></p>
                           </div>
                         )}
 
-                        <small className="rec-date block mt-4 opacity-50">Created: {new Date(rec.created_at).toLocaleDateString()}</small>
+                        <small className="rec-date block mt-4 opacity-50">{t('nutrition.created_at')}: {new Date(rec.created_at).toLocaleDateString()}</small>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -783,10 +763,10 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
           <div className="section-header mb-8">
             <h2 className="section-title text-2xl font-bold text-[var(--text-primary)] flex items-center gap-3">
               <Leaf size={28} className="text-[var(--accent-sage)]" />
-              <span>Ayurvedic Food Database</span>
+              <span><DynamicText>{t('nutrition.food_database')}</DynamicText></span>
             </h2>
             <span className="section-badge bg-[var(--accent-sage)]/20 text-[var(--accent-sage)] px-3 py-1 rounded-full text-sm font-medium border border-[var(--accent-sage)]/30">
-              {foodItems.length} Foods
+              <DynamicText>{`${foodItems.length} ${t('nutrition.foods')}`}</DynamicText>
             </span>
           </div>
 
@@ -796,7 +776,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
               <input
                 type="text"
                 className="w-full bg-[#0f172a]/50 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-sage)]/50 transition-all"
-                placeholder="Search for foods by name (e.g., rice, dal, turmeric, ghee)..."
+                placeholder={t("nutrition.search_placeholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && searchFoodItems()}
@@ -810,18 +790,18 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   value={selectedFoodGroup}
                   onChange={(e) => setSelectedFoodGroup(e.target.value)}
                 >
-                  <option value="">All Food Groups</option>
-                  <option value="Grain">🌾 Grain</option>
-                  <option value="Fruit">🍎 Fruit</option>
-                  <option value="Vegetable">🥬 Vegetable</option>
-                  <option value="Dairy">🥛 Dairy</option>
-                  <option value="Legume">🫘 Legume</option>
-                  <option value="Spice">🌶️ Spice</option>
-                  <option value="Meat">🍖 Meat</option>
-                  <option value="Fish">🐟 Fish</option>
-                  <option value="Nut">🥜 Nut</option>
-                  <option value="Oil">🫗 Oil</option>
-                  <option value="Sweetener">🍯 Sweetener</option>
+                  <option value=""><DynamicText>{t('nutrition.all_groups')}</DynamicText></option>
+                  <option value="Grain">🌾 <DynamicText>Grain</DynamicText></option>
+                  <option value="Fruit">🍎 <DynamicText>Fruit</DynamicText></option>
+                  <option value="Vegetable">🥬 <DynamicText>Vegetable</DynamicText></option>
+                  <option value="Dairy">🥛 <DynamicText>Dairy</DynamicText></option>
+                  <option value="Legume">🫘 <DynamicText>Legume</DynamicText></option>
+                  <option value="Spice">🌶️ <DynamicText>Spice</DynamicText></option>
+                  <option value="Meat">🍖 <DynamicText>Meat</DynamicText></option>
+                  <option value="Fish">🐟 <DynamicText>Fish</DynamicText></option>
+                  <option value="Nut">🥜 <DynamicText>Nut</DynamicText></option>
+                  <option value="Oil">🫗 <DynamicText>Oil</DynamicText></option>
+                  <option value="Sweetener">🍯 <DynamicText>Sweetener</DynamicText></option>
                 </select>
               </div>
 
@@ -831,7 +811,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   value={selectedDosha}
                   onChange={(e) => setSelectedDosha(e.target.value)}
                 >
-                  <option value="">All Doshas</option>
+                  <option value="">{t('nutrition.all_doshas')}</option>
                   <option value="Vata">💨 Vata</option>
                   <option value="Pitta">🔥 Pitta</option>
                   <option value="Kapha">💧 Kapha</option>
@@ -844,13 +824,13 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   onClick={() => searchFoodItems()}
                 >
                   <Search size={18} className="group-hover:scale-110 transition-transform" />
-                  <span>Search</span>
+                  <span>{t('common.search')}</span>
                 </button>
                 <button
                   className="btn-clear group"
                   onClick={clearFilters}
                 >
-                  <span>Clear</span>
+                  <span>{t('filters.clear')}</span>
                   <X size={16} className="opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
                 </button>
               </div>
@@ -911,11 +891,11 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
 
                     <div className="space-y-3 mb-4 bg-white/5 rounded-lg p-3">
                       <div className="flex justify-between text-sm border-b border-white/5 pb-2">
-                        <span className="text-[var(--text-secondary)]">Calories</span>
+                        <span className="text-[var(--text-secondary)]">{t('nutrition.calories')}</span>
                         <span className="font-mono text-[var(--accent-gold)]">{food.calories_per_100g}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-[var(--text-secondary)]">Protein</span>
+                        <span className="text-[var(--text-secondary)]">{t('nutrition.protein')}</span>
                         <span className="font-mono text-[var(--text-primary)]">{food.protein_g}g</span>
                       </div>
                     </div>
@@ -934,7 +914,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     </div>
 
                     <div className="mt-4 flex items-center text-[var(--accent-sage)] text-sm font-medium group-hover:gap-2 transition-all">
-                      <span>View Details</span>
+                      <span>{t('common.view_details')}</span>
                       <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
@@ -946,9 +926,9 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
               <div className="inline-block p-4 rounded-full bg-white/5 mb-4">
                 <Leaf size={40} className="text-[var(--text-secondary)]" />
               </div>
-              <p className="text-xl font-medium text-[var(--text-primary)]">No foods found</p>
+              <p className="text-xl font-medium text-[var(--text-primary)]">{t('nutrition.no_foods_found')}</p>
               <p className="text-[var(--text-secondary)] mt-2">
-                No foods found matching your filters. Try different search terms.
+                {t('nutrition.no_results')}
               </p>
             </div>
 
@@ -962,13 +942,13 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
               </div>
 
               <h3 className="relative z-10 text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#F4F1DE] via-[#E07A5F] to-[#F4F1DE] mb-4 drop-shadow-sm">
-                Start your search
+                {t('nutrition.start_search')}
               </h3>
 
               <p className="relative z-10 text-[var(--text-secondary)] max-w-lg mx-auto mb-10 text-lg font-light leading-relaxed tracking-wide">
                 {prakritiScores
                   ? `Discover personalized foods that balance your ${prakritiScores.dominant} constitution.`
-                  : 'Enter search criteria above to explore our extensive Ayurvedic food database.'}
+                  : t('nutrition.search_instruction')}
               </p>
 
               {prakritiScores && (
@@ -977,7 +957,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   onClick={() => searchFoodItemsByDosha(prakritiScores.ml_prediction?.predicted || prakritiScores.dominant)}
                 >
                   <span className="flex items-center gap-2">
-                    Show Foods for {(prakritiScores.ml_prediction?.predicted || prakritiScores.dominant).toUpperCase()}
+                    {t('nutrition.show_foods_for')} {(prakritiScores.ml_prediction?.predicted || prakritiScores.dominant).toUpperCase()}
                     <ChevronRight size={20} />
                   </span>
                 </button>
@@ -993,15 +973,15 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
           className="principles-section mt-12 mb-8"
         >
           <div className="section-header mb-6">
-            <h2 className="section-title text-xl font-bold text-[var(--text-primary)]">⭐ Ayurvedic Nutrition Principles</h2>
+            <h2 className="section-title text-xl font-bold text-[var(--text-primary)]">⭐ {t('nutrition.principles')}</h2>
           </div>
 
           <div className="principles-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: '🌱', title: 'Rasa (Taste)', desc: 'The six tastes influence your body and mind.' },
-              { icon: '🔥', title: 'Virya (Potency)', desc: 'Heating or cooling effect on digestion.' },
-              { icon: '🌀', title: 'Vipaka (Post-Digestive)', desc: 'Final effect after digestion.' },
-              { icon: '⚖️', title: 'Dosha Balance', desc: 'Foods can reduce or balance your doshas.' }
+              { icon: '🌱', title: t('nutrition.rasa'), desc: 'The six tastes influence your body and mind.' },
+              { icon: '🔥', title: t('nutrition.virya'), desc: 'Heating or cooling effect on digestion.' },
+              { icon: '🌀', title: t('nutrition.vipaka'), desc: 'Final effect after digestion.' },
+              { icon: '⚖️', title: t('nutrition.dosha_balance'), desc: 'Foods can reduce or balance your doshas.' }
             ].map((principle, idx) => (
               <GlassCard key={idx} className="p-6 text-center hover:bg-white/[0.03] transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-white/5 hover:border-[var(--accent-gold)]/30 group">
                 <div className="text-5xl mb-4 transform transition-transform group-hover:scale-110 drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">{principle.icon}</div>
@@ -1054,11 +1034,11 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   fontWeight: '700',
                   color: '#f3f4f6',
                   marginBottom: '4px'
-                }}>📊 Nutrition Analytics</h2>
+                }}>📊 {t('nutrition.analytics')}</h2>
                 <p className="visualization-subtitle" style={{
                   fontSize: '14px',
                   color: '#9ca3af'
-                }}>Comprehensive visualization of your food search results</p>
+                }}>{t('nutrition.viz_desc')}</p>
               </div>
               <button
                 className="visualization-close-btn"
@@ -1104,12 +1084,12 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   borderRadius: '12px'
                 }}>
                   {[
-                    { id: 'macro', label: 'Macronutrients', icon: '📊' },
-                    { id: 'dosha', label: 'Dosha Effects', icon: '⚖️' },
-                    { id: 'group', label: 'Food Groups', icon: '🥘' },
-                    { id: 'calories', label: 'Calorie Comparison', icon: '🔥' },
-                    { id: 'micronutrients', label: 'Vitamins & Minerals', icon: 'mic' },
-                    { id: 'doshaMicronutrients', label: 'Dosha Micronutrients', icon: 'dna' }
+                    { id: 'macro', label: t('nutrition.macros'), icon: '📊' },
+                    { id: 'dosha', label: t('nutrition.dosha_effects'), icon: '⚖️' },
+                    { id: 'group', label: t('nutrition.food_groups'), icon: '🥘' },
+                    { id: 'calories', label: t('nutrition.calorie_comparison'), icon: '🔥' },
+                    { id: 'micronutrients', label: t('nutrition.vitamins_minerals'), icon: 'mic' },
+                    { id: 'doshaMicronutrients', label: t('nutrition.dosha_micros'), icon: 'dna' }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -1173,7 +1153,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   transition={{ duration: 0.5 }}
                 >
                   <div className="visualization-card main-chart-card">
-                    <h3 className="visualization-card-title">Average Macro Distribution</h3>
+                    <h3 className="visualization-card-title">{t('nutrition.avg_macro_dist')}</h3>
                     <div className="chart-container">
                       <ResponsiveContainer width="100%" height={350}>
                         <PieChart>
@@ -1216,7 +1196,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     </div>
                   </div>
                   <div className="visualization-card stats-card">
-                    <h3 className="visualization-card-title">Quick Stats</h3>
+                    <h3 className="visualization-card-title">{t('nutrition.quick_stats')}</h3>
                     <div className="stats-grid">
                       {micronutrients.map((macro, idx) => (
                         <div key={idx} className="stat-item" style={{ borderColor: macro.color + '40' }}>
@@ -1246,7 +1226,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   transition={{ duration: 0.5 }}
                 >
                   <div className="visualization-card">
-                    <h3 className="visualization-card-title">Dosha Distribution in Results</h3>
+                    <h3 className="visualization-card-title">{t('nutrition.dosha_dist_results')}</h3>
                     <ResponsiveContainer width="100%" height={350}>
                       <BarChart data={doshaData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1298,7 +1278,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     {selectedFoodGroup ? (
                       <>
                         <h3 className="visualization-card-title">
-                          Top Recommended {selectedFoodGroup}s for {(selectedDosha || prakritiScores?.dominant || 'You').charAt(0).toUpperCase() + (selectedDosha || prakritiScores?.dominant || 'You').slice(1)}
+                          {t('nutrition.top_recommended')} {selectedFoodGroup}s {t('nutrition.show_foods_for')} {(selectedDosha || prakritiScores?.dominant || 'You').charAt(0).toUpperCase() + (selectedDosha || prakritiScores?.dominant || 'You').slice(1)}
                         </h3>
                         {(() => {
                           const targetDosha = selectedDosha || prakritiScores?.dominant || '';
@@ -1357,7 +1337,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                       </>
                     ) : (
                       <>
-                        <h3 className="visualization-card-title">Food Groups Distribution</h3>
+                        <h3 className="visualization-card-title">{t('nutrition.group_dist')}</h3>
                         <ResponsiveContainer width="100%" height={400}>
                           <PieChart>
                             <Pie
@@ -1393,7 +1373,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                                 borderRadius: '12px',
                                 color: '#f3f4f6'
                               }}
-                              formatter={(value: number) => [`${value} items`, 'Count']}
+                              formatter={(value: number) => [`${value} ${t('common.items')}`, t('common.count')]}
                             />
                             <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
                           </PieChart>
@@ -1412,7 +1392,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   transition={{ duration: 0.5 }}
                 >
                   <h3 className="visualization-card-title">
-                    Top 50 Calorie Comparison
+                    {t('nutrition.top_50_cals')}
                     {(selectedFoodGroup || selectedDosha) && <span className="text-sm font-normal text-gray-400 ml-2">(Filtered)</span>}
                   </h3>
 
@@ -1523,7 +1503,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
               {visualizationType === 'micronutrients' && (
                 <div className="visualization-grid">
                   <div className="visualization-card">
-                    <h3 className="visualization-card-title">Top Vitamins in Your Foods</h3>
+                    <h3 className="visualization-card-title">{t('nutrition.top_vitamins')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={micronutritionData.vitamins}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -1535,7 +1515,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     </ResponsiveContainer>
                   </div>
                   <div className="visualization-card">
-                    <h3 className="visualization-card-title">Top Minerals in Your Foods</h3>
+                    <h3 className="visualization-card-title">{t('nutrition.top_minerals')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={micronutritionData.minerals}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -1558,7 +1538,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   transition={{ duration: 0.5 }}
                 >
                   <div className="visualization-card">
-                    <h3 className="visualization-card-title">🔬 Vata: Vitamin Content</h3>
+                    <h3 className="visualization-card-title">🔬 {t('nutrition.vata_vitamins')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={getDoshaMicronutritionData().vata.vitamins}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1573,7 +1553,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     </ResponsiveContainer>
                   </div>
                   <div className="visualization-card">
-                    <h3 className="visualization-card-title">🔬 Pitta: Vitamin Content</h3>
+                    <h3 className="visualization-card-title">🔬 {t('nutrition.pitta_vitamins')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={getDoshaMicronutritionData().pitta.vitamins}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1588,7 +1568,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     </ResponsiveContainer>
                   </div>
                   <div className="visualization-card">
-                    <h3 className="visualization-card-title">🔬 Kapha: Vitamin Content</h3>
+                    <h3 className="visualization-card-title">🔬 {t('nutrition.kapha_vitamins')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={getDoshaMicronutritionData().kapha.vitamins}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1662,9 +1642,11 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                   <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-gold)] to-[#fcd34d]">
                     {selectedFood.name_en}
                   </h2>
-                  <p className="text-lg italic text-[var(--accent-green)] opacity-80 mt-1">
-                    {selectedFood.name_sanskrit}
-                  </p>
+                  {selectedFood.name_sanskrit && (
+                    <p className="text-lg italic text-[var(--accent-green)] opacity-80 mt-1">
+                      {selectedFood.name_sanskrit}
+                    </p>
+                  )}
                 </div>
                 <button
                   className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
@@ -1693,7 +1675,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     </div>
                     <div className="flex justify-between border-b border-white/5 pb-2">
                       <span className="text-gray-400">Portion</span>
-                      <span className="text-white font-medium">{selectedFood.recommended_portion}</span>
+                      <span className="text-white font-medium">{selectedFood.recommended_portion || 'As needed'}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -1717,12 +1699,12 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-xs uppercase tracking-wide text-gray-500 mb-1 block">Virya (Potency)</span>
-                        <div>{getVirtyaDisplay(selectedFood.virya)}</div>
+                        <div>{getViryaDisplay(selectedFood.virya)}</div>
                       </div>
                       <div>
                         <span className="text-xs uppercase tracking-wide text-gray-500 mb-1 block">Vipaka (Post-Digestive)</span>
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                          {selectedFood.vipaka}
+                          {selectedFood.vipaka || 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -1749,7 +1731,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                       { label: 'Fiber', value: selectedFood.fiber_g, unit: 'g', color: '#3D405B' }
                     ].map((item, i) => (
                       <div key={i} className="flex flex-col items-center p-3 rounded-xl bg-black/20 border border-white/5">
-                        <span className="text-2xl font-bold mb-1" style={{ color: item.color }}>{item.value}</span>
+                        <span className="text-2xl font-bold mb-1" style={{ color: item.color }}>{item.value || 0}</span>
                         <span className="text-xs text-gray-400">{item.unit}</span>
                         <span className="text-xs font-medium text-gray-300 mt-2">{item.label}</span>
                       </div>
@@ -1774,9 +1756,9 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                 </motion.div>
 
                 {/* Vitamins & Minerals Section */}
-                {(selectedFood.vitamins.length > 0 || selectedFood.minerals.length > 0) && (
+                {((selectedFood.vitamins && selectedFood.vitamins.length > 0) || (selectedFood.minerals && selectedFood.minerals.length > 0)) && (
                   <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {selectedFood.vitamins.length > 0 && (
+                    {selectedFood.vitamins && selectedFood.vitamins.length > 0 && (
                       <div className="space-y-4">
                         <h4 className="text-lg font-bold text-gray-300 flex items-center gap-2">
                           <span className="text-pink-400">🔬</span> Vitamins
@@ -1799,7 +1781,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                       </div>
                     )}
 
-                    {selectedFood.minerals.length > 0 && (
+                    {selectedFood.minerals && selectedFood.minerals.length > 0 && (
                       <div className="space-y-4">
                         <h4 className="text-lg font-bold text-gray-300 flex items-center gap-2">
                           <span className="text-teal-400">🧂</span> Minerals
@@ -1825,7 +1807,7 @@ const NutritionDashboard: React.FC<{ prakritiScores?: PrakritiScores }> = ({ pra
                 )}
 
                 {/* Therapeutic Uses */}
-                {selectedFood.therapeutic_uses.length > 0 && (
+                {selectedFood.therapeutic_uses && selectedFood.therapeutic_uses.length > 0 && (
                   <div className="col-span-1 md:col-span-2 p-6 rounded-2xl bg-green-900/10 border border-green-500/10">
                     <h3 className="text-xl font-bold text-green-400 mb-4 flex items-center gap-2">
                       <span>💊</span> Therapeutic Uses

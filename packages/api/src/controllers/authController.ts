@@ -182,7 +182,7 @@ export const authController = {
       }
 
       const {
-        phone, firstName, lastName, email, consent, dateOfBirth, gender, address,
+        phone, firstName, lastName, email, password, consent, dateOfBirth, gender, address,
         emergencyContact, emergencyName, emergencyRelation,
         occupation, chronicConditions, currentMedications, allergies,
         previousSurgeries, familyHistory, exerciseFrequency, sleepPattern,
@@ -209,23 +209,82 @@ export const authController = {
         return res.status(400).json({ error: 'Phone or email required' });
       }
 
-      // IF userId is provided in body (from client-side Supabase Auth signup), use that.
-      // Otherwise generate new one.
-      const userId = (req.body as any).userId || crypto.randomUUID();
+      // 1. Identify existing user by email or phone to handle conflicts
+      let existingUserId: string | null = null;
+      const emailLower = email ? email.toLowerCase() : null;
 
-      // Check for existing user logic removed - we will UPSERT to ensure data sync
+      if (emailLower || normalizedPhone) {
+        let lookupQuery = supabase.from('users').select('id');
+        if (emailLower && normalizedPhone) {
+          lookupQuery = lookupQuery.or(`email.eq.${emailLower},phone.eq.${normalizedPhone}`);
+        } else if (emailLower) {
+          lookupQuery = lookupQuery.eq('email', emailLower);
+        } else if (normalizedPhone) {
+          lookupQuery = lookupQuery.eq('phone', normalizedPhone);
+        }
 
-      // ... logic to verify phone/email uniqueness if needed...
+        const { data: existing } = await lookupQuery.maybeSingle();
+        if (existing) {
+          existingUserId = existing.id;
+          console.log('[authController] User identifier already exists in DB. Merging/Updating existing ID:', existingUserId);
+        }
+      }
+
+      // 2. Identify/Verify existence in Supabase Auth
+      let finalUserId = existingUserId || (req.body as any).userId;
+
+      if (emailLower && !finalUserId) {
+        // Check if user exists in Auth by email
+        const { data: authList, error: authGetError } = await (supabase.auth.admin as any).listUsers();
+        const authUser = authList?.users?.find((u: any) => u.email?.toLowerCase() === emailLower);
+        if (authUser) {
+          finalUserId = authUser.id;
+        }
+      }
+
+      // Generate random ID if still null
+      if (!finalUserId) {
+        finalUserId = crypto.randomUUID();
+      }
+
+      // 3. Auto-Confirm/Create in Supabase Auth if password provided
+      if (emailLower && password) {
+        try {
+          const { data: authUser, error: authGetError } = await (supabase.auth.admin as any).getUserById(finalUserId);
+
+          if (authGetError || !authUser?.user) {
+            console.log('[authController] Creating new admin user in Auth for:', emailLower);
+            await (supabase.auth.admin as any).createUser({
+              id: finalUserId,
+              email: emailLower,
+              password: password,
+              email_confirm: true,
+              user_metadata: { role: 'patient', first_name: firstName, last_name: lastName }
+            });
+          } else {
+            console.log('[authController] Updating/Confirming existing Auth user:', finalUserId);
+            await (supabase.auth.admin as any).updateUserById(finalUserId, {
+              email_confirm: true,
+              password: password,
+              user_metadata: { role: 'patient', first_name: firstName, last_name: lastName }
+            });
+          }
+        } catch (authErr) {
+          console.warn('[authController] Auth admin operation warning:', authErr);
+        }
+      }
 
       const now = new Date().toISOString();
+      const passwordHash = password ? await bcrypt.hash(password, 10) : null;
 
       // Create complete user record with all provided data
-      const userData = {
-        id: userId,
+      const userData: any = {
+        id: finalUserId,
         phone: normalizedPhone,
         first_name: firstName,
         last_name: lastName,
-        email: email ? email.toLowerCase() : null,
+        email: emailLower,
+        password_hash: passwordHash,
         date_of_birth: dateOfBirth,
         gender: gender,
         address: address,
@@ -384,9 +443,10 @@ export const authController = {
       const { data: user } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
       if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-      if (user.role === 'patient') {
-        return res.status(403).json({ error: 'Patients must login with OTP' });
-      }
+      // Patients are now allowed to login with email/password
+      // if (user.role === 'patient') {
+      //   return res.status(403).json({ error: 'Patients must login with OTP' });
+      // }
 
       const valid = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
       if (!valid) return res.status(401).json({ error: 'Invalid credentials' });

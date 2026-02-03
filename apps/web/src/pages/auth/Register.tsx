@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageSelector } from '../../components/LanguageSelector';
+import { GlobalFooter } from '../../components/GlobalFooter';
 
 // Combined Interface
 interface RegistrationData {
@@ -128,71 +129,57 @@ const Register = () => {
         setError(null);
 
         try {
-            // 1. Sign up with Supabase Auth (Client-side)
-            // This ensures we have a valid Auth user
-
             // Set flag to prevent AuthContext from racing to fetch profile
             localStorage.setItem('registration_in_progress', 'true');
 
-            const { data: authData, error: authError } = await supabase.auth.signUp({
+            // 1. Call Backend API to create the Full Profile + Auth User in one shot
+            const payload = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
                 email: formData.email,
                 password: formData.password,
-                options: {
-                    data: {
-                        first_name: formData.firstName,
-                        last_name: formData.lastName,
-                        role: 'patient'
-                    }
-                }
-            });
+                // Profile Data
+                dateOfBirth: formData.dateOfBirth,
+                gender: formData.gender,
+                phone: formData.phone,
+                address: formData.address,
+                emergencyName: formData.emergencyName,
+                emergencyContact: formData.emergencyContact,
+                emergencyRelation: formData.emergencyRelation,
+                // Medical Context
+                occupation: formData.occupation,
+                exerciseFrequency: formData.exerciseFrequency,
+                smokingStatus: formData.smokingStatus,
+                alcoholConsumption: formData.alcoholConsumption,
+                consent: formData.healthDataConsent
+            };
 
-            if (authError) throw authError;
+            const response = await api.register(payload);
 
-            if (authData.user) {
-                // 2. Call Backend API to create the Full Profile (bypassing RLS issues and handling complex data)
-                // We pass the 'userId' we just got. Backend updated to respect this ID.
-                const payload = {
-                    userId: authData.user.id, // CRITICAL: Link to Auth User
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
+            if (response.success) {
+                // 2. Auth was handled by backend, now sign in locally to get session
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email: formData.email,
-                    password: formData.password, // Redundant but harmless if backend ignores
-                    // Profile Data
-                    dateOfBirth: formData.dateOfBirth,
-                    gender: formData.gender,
-                    phone: formData.phone, // Added phone
-                    address: formData.address,
-                    emergencyName: formData.emergencyName,
-                    emergencyContact: formData.emergencyContact,
-                    emergencyRelation: formData.emergencyRelation,
-                    // Medical Context
-                    occupation: formData.occupation,
-                    exerciseFrequency: formData.exerciseFrequency,
-                    smokingStatus: formData.smokingStatus,
-                    alcoholConsumption: formData.alcoholConsumption,
-                    consent: formData.healthDataConsent
-                };
+                    password: formData.password
+                });
 
-                const response = await api.register(payload);
+                if (authError) throw authError;
 
-                if (response.success) {
-                    // 3. Navigate
+                // Clear registration flag
+                localStorage.removeItem('registration_in_progress');
 
-                    // Clear registration flag
-                    localStorage.removeItem('registration_in_progress');
-
-                    if (authData.session) {
-                        navigate('/auth/prakriti-questionnaire', { state: { userId: authData.user.id } });
-                    } else {
-                        // Email confirmation required case
-                        alert('Registration successful! Please check your email to verify account.');
-                        navigate('/auth/login');
-                    }
+                if (authData.session) {
+                    navigate('/auth/prakriti-questionnaire', { state: { userId: authData.user.id } });
                 } else {
-                    throw new Error(response.message || 'Profile creation failed.');
+                    // This case should be rare now since backend auto-confirms
+                    alert('Registration successful! Please login to continue.');
+                    navigate('/auth/login');
                 }
+            } else {
+                throw new Error(response.message || 'Profile creation failed.');
             }
-        } catch (err: any) {
+        }
+        catch (err: any) {
             console.error(err);
             // Better error message handling
             const msg = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
@@ -430,6 +417,7 @@ const Register = () => {
                         </div>
                     </form>
                 </div>
+                <GlobalFooter className="absolute bottom-4 z-50 text-stone-400" />
             </div>
         </div>
     );
